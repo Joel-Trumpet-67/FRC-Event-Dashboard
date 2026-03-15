@@ -1067,6 +1067,22 @@ input:focus, textarea:focus {
   flex-shrink: 0;
 }
 
+.field-topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.field-switch-btn {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--accent);
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 6px 12px;
+}
+
 .field-match {
   display: flex;
   flex-direction: column;

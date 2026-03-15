@@ -1,14 +1,17 @@
 import React, { useState, useEffect } from 'react'
 import { getBestNextBattery, getInBotBattery, STATUS_COLOR } from '../utils/batteryLogic'
 import { formatElapsed, estimateChargePercent } from '../utils/formatting'
+import SettingsPanel from './SettingsPanel'
 
 /**
  * Ultra-simple full-screen view for field phones / drive coaches.
  * Shows only: USE NEXT battery, IN BOT battery, match number.
  * No tapping, no actions — read-only at a glance.
  */
-export default function FieldView({ batteries, matchNumber, chargeThresholdMin, teamNumber, syncStatus }) {
+export default function FieldView({ batteries, matchNumber, chargeThresholdMin, teamNumber, syncStatus, settings, onSaveSettings, onResetAll, urlFieldMode }) {
   const [tick, setTick] = useState(0)
+  const [showSettings, setShowSettings] = useState(false)
+
   useEffect(() => {
     const id = setInterval(() => setTick(t => t + 1), 10_000)
     return () => clearInterval(id)
@@ -26,6 +29,13 @@ export default function FieldView({ batteries, matchNumber, chargeThresholdMin, 
 
   const syncDot = { live: '#22c55e', local: '#64748b', error: '#ef4444' }[syncStatus] ?? '#64748b'
 
+  function switchToPit() {
+    // Strip ?field from URL and reload into pit view
+    const url = new URL(window.location.href)
+    url.searchParams.delete('field')
+    window.location.replace(url.toString())
+  }
+
   return (
     <div className="field-view">
 
@@ -38,8 +48,23 @@ export default function FieldView({ batteries, matchNumber, chargeThresholdMin, 
         {teamNumber && (
           <div className="field-team">Team {teamNumber}</div>
         )}
-        <div className="field-sync-dot" style={{ background: syncDot }} title={syncStatus} />
+        <div className="field-topbar-right">
+          <div className="field-sync-dot" style={{ background: syncDot }} title={syncStatus} />
+          {urlFieldMode
+            ? <button className="field-switch-btn" onClick={switchToPit} title="Switch to Pit View">🔧 Pit</button>
+            : <button className="icon-btn" onClick={() => setShowSettings(true)} aria-label="Settings">⚙</button>
+          }
+        </div>
       </div>
+
+      {showSettings && settings && (
+        <SettingsPanel
+          settings={settings}
+          onSave={onSaveSettings}
+          onResetAll={onResetAll}
+          onClose={() => setShowSettings(false)}
+        />
+      )}
 
       {/* USE NEXT — dominant section */}
       <div className="field-next-section">

@@ -108,6 +108,10 @@ export default function App() {
         chargeThresholdMin={settings.chargeThreshold}
         teamNumber={settings.teamNumber}
         syncStatus={syncStatus}
+        settings={settings}
+        onSaveSettings={handleSaveSettings}
+        onResetAll={handleResetAll}
+        urlFieldMode={URL_FIELD_MODE}
       />
     )
   }
