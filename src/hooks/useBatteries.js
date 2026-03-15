@@ -54,11 +54,17 @@ export function useBatteries(batteryCount = DEFAULT_COUNT, syncCode = '', onSync
         const remoteData = snapshot.val()
         if (!remoteData || !Array.isArray(remoteData)) return
 
+        // Firebase converts empty arrays [] to null — restore them
+        const sanitized = remoteData.map(b => ({
+          ...b,
+          history: Array.isArray(b.history) ? b.history : [],
+        }))
+
         // Only update if data actually differs (avoids re-render on our own echo)
         setBatteriesRaw(current => {
-          if (JSON.stringify(current) === JSON.stringify(remoteData)) return current
+          if (JSON.stringify(current) === JSON.stringify(sanitized)) return current
           isRemoteUpdate.current = true
-          return remoteData
+          return sanitized
         })
       },
       (error) => {

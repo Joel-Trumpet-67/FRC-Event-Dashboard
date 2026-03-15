@@ -70,7 +70,7 @@ export function addHistory(battery, action, details = '') {
     ...battery,
     history: [
       { action, timestamp: Date.now(), details },
-      ...battery.history,
+      ...(battery.history || []), // guard against Firebase null conversion
     ].slice(0, 50), // keep last 50 events
   }
 }

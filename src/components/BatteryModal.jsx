@@ -323,10 +323,10 @@ export default function BatteryModal({
             </button>
             {showHistory && (
               <div className="history-list">
-                {battery.history.length === 0 ? (
+                {(battery.history || []).length === 0 ? (
                   <div className="history-empty">No events recorded yet.</div>
                 ) : (
-                  battery.history.map((evt, i) => (
+                  (battery.history || []).map((evt, i) => (
                     <div className="history-row" key={i}>
                       <div className="history-action">{evt.action}</div>
                       <div className="history-meta">
