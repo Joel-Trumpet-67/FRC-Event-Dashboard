@@ -4,6 +4,7 @@ import StatusBanner from './components/StatusBanner'
 import BatteryGrid from './components/BatteryGrid'
 import BatteryModal from './components/BatteryModal'
 import SettingsPanel from './components/SettingsPanel'
+import FieldView from './components/FieldView'
 import { useBatteries } from './hooks/useBatteries'
 import { getBestNextBattery, getInBotBattery } from './utils/batteryLogic'
 import {
@@ -17,14 +18,16 @@ import { isFirebaseConfigured } from './firebase'
 const DEFAULT_SETTINGS = {
   teamNumber: '',
   batteryCount: 6,
-  chargeThreshold: 60,  // minutes
-  coolThreshold: 15,    // minutes
-  syncCode: '',         // Firebase room key — empty = local only
-  viewOnly: false,      // disables all action buttons (field / drive coach phone)
+  chargeThreshold: 60,
+  coolThreshold: 15,
+  syncCode: '',
+  viewOnly: false,
 }
 
+// ?field in URL forces field view without needing settings
+const URL_FIELD_MODE = new URLSearchParams(window.location.search).has('field')
+
 export default function App() {
-  // ─── Global settings ──────────────────────────────────────────────────────
   const [settings, setSettings] = useState(() => ({
     ...DEFAULT_SETTINGS,
     ...(loadSettings() || {}),
@@ -32,7 +35,6 @@ export default function App() {
 
   const [matchNumber, setMatchNumber] = useState(loadMatchNumber)
 
-  // ─── Sync status: 'live' | 'local' | 'error' ──────────────────────────────
   const [syncStatus, setSyncStatus] = useState(
     isFirebaseConfigured && settings.syncCode ? 'error' : 'local'
   )
@@ -41,7 +43,6 @@ export default function App() {
     setSyncStatus(connected ? 'live' : 'error')
   }, [])
 
-  // ─── Battery state (hook) ─────────────────────────────────────────────────
   const {
     batteries,
     startCharging,
@@ -55,18 +56,15 @@ export default function App() {
     resetAll,
   } = useBatteries(settings.batteryCount, settings.syncCode, handleSyncStatus)
 
-  // ─── UI state ─────────────────────────────────────────────────────────────
   const [selectedBattery, setSelectedBattery] = useState(null)
   const [showSettings, setShowSettings] = useState(false)
 
-  // Push a history entry when a modal opens so hardware back button closes it
   useEffect(() => {
     if (selectedBattery || showSettings) {
       window.history.pushState({ modal: true }, '')
     }
   }, [selectedBattery, showSettings])
 
-  // Handle hardware back button (Android) and browser back gesture (iOS swipe)
   useEffect(() => {
     function handlePopState() {
       if (selectedBattery) { setSelectedBattery(null); return }
@@ -76,41 +74,43 @@ export default function App() {
     return () => window.removeEventListener('popstate', handlePopState)
   }, [selectedBattery, showSettings])
 
-  // Tick every 10s to refresh timer displays
   const [tick, setTick] = useState(0)
   useEffect(() => {
     const id = setInterval(() => setTick(t => t + 1), 10_000)
     return () => clearInterval(id)
   }, [])
 
-  // Persist settings
   useEffect(() => { saveSettings(settings) }, [settings])
-
-  // Persist match number
   useEffect(() => { saveMatchNumber(matchNumber) }, [matchNumber])
-
-  // Reset sync status when syncCode is cleared
   useEffect(() => {
     if (!isFirebaseConfigured || !settings.syncCode) setSyncStatus('local')
   }, [settings.syncCode])
 
-  // Recompute recommendation on every tick or battery change
   const bestNext = getBestNextBattery(batteries, settings.chargeThreshold)
   const inBotBattery = getInBotBattery(batteries)
-
-  // Keep modal data fresh from batteries array
   const modalBattery = selectedBattery
     ? batteries.find(b => b.id === selectedBattery.id) || null
     : null
 
-  // ─── Action handlers ───────────────────────────────────────────────────────
   function closeModal() { setSelectedBattery(null) }
-
   function handleSaveSettings(newSettings) { setSettings(newSettings) }
-
   function handleResetAll(count) { resetAll(count); setSelectedBattery(null) }
-
   function handlePutInBot(id) { putInBot(id); closeModal() }
+
+  // Field view: triggered by ?field URL param OR viewOnly setting
+  const isFieldMode = URL_FIELD_MODE || settings.viewOnly
+
+  if (isFieldMode) {
+    return (
+      <FieldView
+        batteries={batteries}
+        matchNumber={matchNumber}
+        chargeThresholdMin={settings.chargeThreshold}
+        teamNumber={settings.teamNumber}
+        syncStatus={syncStatus}
+      />
+    )
+  }
 
   return (
     <div className="app">
