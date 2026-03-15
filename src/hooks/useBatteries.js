@@ -1,6 +1,8 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { ref, set, onValue, off } from 'firebase/database'
 import { createBattery, addHistory, STATUS } from '../utils/batteryLogic'
 import { loadBatteries, saveBatteries } from '../utils/storage'
+import { db, isFirebaseConfigured } from '../firebase'
 
 const DEFAULT_COUNT = 6
 
@@ -10,9 +12,20 @@ function buildDefaultBatteries(count = DEFAULT_COUNT) {
 
 /**
  * Central hook for all battery state management.
- * All mutations go through this hook so localStorage stays in sync.
+ *
+ * When syncCode is provided AND Firebase is configured:
+ *   - Listens to /rooms/{syncCode}/batteries in Firebase RTDB
+ *   - Pushes every local state change to Firebase
+ *   - All other devices with the same syncCode see changes in ~200ms
+ *
+ * When syncCode is empty or Firebase is not configured:
+ *   - Falls back to localStorage only (original behavior)
+ *
+ * @param {number}   batteryCount
+ * @param {string}   syncCode      - shared room key, e.g. "FRC1234"
+ * @param {Function} onSyncStatus  - called with true (connected) / false
  */
-export function useBatteries(batteryCount = DEFAULT_COUNT) {
+export function useBatteries(batteryCount = DEFAULT_COUNT, syncCode = '', onSyncStatus = null) {
   const [batteries, setBatteriesRaw] = useState(() => {
     const saved = loadBatteries()
     if (saved && Array.isArray(saved) && saved.length === batteryCount) {
@@ -21,84 +34,107 @@ export function useBatteries(batteryCount = DEFAULT_COUNT) {
     return buildDefaultBatteries(batteryCount)
   })
 
-  // Keep localStorage in sync whenever batteries change
+  // Track whether the most recent state change came from a remote Firebase update.
+  // Prevents echoing remote updates back to Firebase (infinite loop guard).
+  const isRemoteUpdate = useRef(false)
+
+  // ─── Firebase real-time listener ───────────────────────────────────────────
+  useEffect(() => {
+    if (!isFirebaseConfigured || !syncCode) {
+      onSyncStatus?.(false)
+      return
+    }
+
+    const battRef = ref(db, `rooms/${syncCode}/batteries`)
+
+    const unsubscribe = onValue(
+      battRef,
+      (snapshot) => {
+        onSyncStatus?.(true)
+        const remoteData = snapshot.val()
+        if (!remoteData || !Array.isArray(remoteData)) return
+
+        // Only update if data actually differs (avoids re-render on our own echo)
+        setBatteriesRaw(current => {
+          if (JSON.stringify(current) === JSON.stringify(remoteData)) return current
+          isRemoteUpdate.current = true
+          return remoteData
+        })
+      },
+      (error) => {
+        console.warn('Firebase sync error:', error)
+        onSyncStatus?.(false)
+      }
+    )
+
+    return () => off(battRef)
+  }, [syncCode]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ─── Persist to localStorage + push to Firebase ────────────────────────────
   useEffect(() => {
     saveBatteries(batteries)
-  }, [batteries])
 
+    // If this came from Firebase, don't echo it back
+    if (isRemoteUpdate.current) {
+      isRemoteUpdate.current = false
+      return
+    }
+
+    if (!isFirebaseConfigured || !syncCode) return
+
+    const battRef = ref(db, `rooms/${syncCode}/batteries`)
+    set(battRef, batteries).catch(err => console.warn('Firebase write failed:', err))
+  }, [batteries, syncCode])
+
+  // ─── Internal setter ───────────────────────────────────────────────────────
   const setBatteries = useCallback((updater) => {
-    setBatteriesRaw(prev => {
-      const next = typeof updater === 'function' ? updater(prev) : updater
-      return next
-    })
+    setBatteriesRaw(prev =>
+      typeof updater === 'function' ? updater(prev) : updater
+    )
   }, [])
 
-  // Replace a single battery by id
-  const updateBattery = useCallback((id, patch) => {
-    setBatteries(prev =>
-      prev.map(b => (b.id === id ? { ...b, ...patch } : b))
-    )
-  }, [setBatteries])
+  // ─── Status transition actions ─────────────────────────────────────────────
 
-  // ─── Status transition actions ────────────────────────────────────────────
-
-  /**
-   * Begin charging. Valid from: depleted, cooling.
-   */
   const startCharging = useCallback((id) => {
     setBatteries(prev => prev.map(b => {
       if (b.id !== id) return b
-      const updated = {
+      return addHistory({
         ...b,
         status: STATUS.CHARGING,
         chargeStartTime: Date.now(),
         chargeEndTime: null,
-      }
-      return addHistory(updated, 'Started charging', `Status was: ${b.status}`)
+      }, 'Started charging', `Status was: ${b.status}`)
     }))
   }, [setBatteries])
 
-  /**
-   * Mark a battery as ready (fully charged). Valid from: charging.
-   */
   const markReady = useCallback((id) => {
     setBatteries(prev => prev.map(b => {
       if (b.id !== id) return b
-      const updated = {
+      return addHistory({
         ...b,
         status: STATUS.READY,
         chargeEndTime: Date.now(),
-      }
-      return addHistory(updated, 'Marked ready', 'Charge complete')
+      }, 'Marked ready', 'Charge complete')
     }))
   }, [setBatteries])
 
-  /**
-   * Cancel charging without marking ready. Returns to depleted.
-   */
   const cancelCharging = useCallback((id) => {
     setBatteries(prev => prev.map(b => {
       if (b.id !== id) return b
-      const updated = {
+      return addHistory({
         ...b,
         status: STATUS.DEPLETED,
         chargeStartTime: null,
         chargeEndTime: null,
-      }
-      return addHistory(updated, 'Charge cancelled')
+      }, 'Charge cancelled')
     }))
   }, [setBatteries])
 
-  /**
-   * Install battery into the robot. Valid from: ready.
-   * Automatically removes any previously in-bot battery to cooling.
-   */
   const putInBot = useCallback((id) => {
     setBatteries(prev => {
       const now = Date.now()
       return prev.map(b => {
         if (b.id === id) {
-          // Installing this battery
           const updated = {
             ...b,
             status: STATUS.IN_BOT,
@@ -109,46 +145,35 @@ export function useBatteries(batteryCount = DEFAULT_COUNT) {
           return addHistory(updated, 'Put in bot', `Cycle #${updated.cycleCount}`)
         }
         if (b.status === STATUS.IN_BOT) {
-          // Previous in-bot battery → cooling
-          const updated = {
+          return addHistory({
             ...b,
             status: STATUS.COOLING,
             removedFromBotTime: now,
             coolStartTime: now,
-          }
-          return addHistory(updated, 'Removed from bot (auto)', 'Replaced by new battery')
+          }, 'Removed from bot (auto)', 'Replaced by new battery')
         }
         return b
       })
     })
   }, [setBatteries])
 
-  /**
-   * Remove battery from bot, sending it to cooling. Valid from: in_bot.
-   * @param {boolean} depleted - if true, mark depleted instead of cooling
-   */
   const removeFromBot = useCallback((id, depleted = false) => {
     setBatteries(prev => prev.map(b => {
       if (b.id !== id) return b
       const now = Date.now()
-      const nextStatus = depleted ? STATUS.DEPLETED : STATUS.COOLING
-      const updated = {
+      return addHistory({
         ...b,
-        status: nextStatus,
+        status: depleted ? STATUS.DEPLETED : STATUS.COOLING,
         removedFromBotTime: now,
         coolStartTime: depleted ? null : now,
-      }
-      return addHistory(updated, depleted ? 'Removed from bot (depleted)' : 'Removed from bot (cooling)')
+      }, depleted ? 'Removed from bot (depleted)' : 'Removed from bot (cooling)')
     }))
   }, [setBatteries])
 
-  /**
-   * Mark any battery as depleted (needs charging). Valid from any status.
-   */
   const markDepleted = useCallback((id) => {
     setBatteries(prev => prev.map(b => {
       if (b.id !== id) return b
-      const updated = {
+      return addHistory({
         ...b,
         status: STATUS.DEPLETED,
         chargeStartTime: null,
@@ -156,14 +181,10 @@ export function useBatteries(batteryCount = DEFAULT_COUNT) {
         coolStartTime: null,
         putInBotTime: null,
         removedFromBotTime: null,
-      }
-      return addHistory(updated, 'Marked depleted')
+      }, 'Marked depleted')
     }))
   }, [setBatteries])
 
-  /**
-   * Update voltage reading and/or IR reading.
-   */
   const updateReadings = useCallback((id, { voltage, internalResistance }) => {
     setBatteries(prev => prev.map(b => {
       if (b.id !== id) return b
@@ -178,9 +199,6 @@ export function useBatteries(batteryCount = DEFAULT_COUNT) {
     }))
   }, [setBatteries])
 
-  /**
-   * Update battery label or notes.
-   */
   const updateMeta = useCallback((id, { label, notes }) => {
     setBatteries(prev => prev.map(b => {
       if (b.id !== id) return b
@@ -191,9 +209,6 @@ export function useBatteries(batteryCount = DEFAULT_COUNT) {
     }))
   }, [setBatteries])
 
-  /**
-   * Reset all batteries to factory defaults (confirmation required in UI).
-   */
   const resetAll = useCallback((newCount = batteryCount) => {
     setBatteries(buildDefaultBatteries(newCount))
   }, [setBatteries, batteryCount])

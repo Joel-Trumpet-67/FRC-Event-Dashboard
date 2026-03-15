@@ -17,6 +17,7 @@ export default function BatteryModal({
   battery,
   chargeThresholdMin,
   coolThresholdMin,
+  viewOnly,
   onClose,
   onStartCharging,
   onMarkReady,
@@ -217,8 +218,11 @@ export default function BatteryModal({
             )}
           </div>
 
-          {/* Action buttons */}
-          <ActionButtons />
+          {/* Action buttons — hidden in view-only mode */}
+          {viewOnly
+            ? <div className="view-only-banner">👁 View Only — actions disabled</div>
+            : <ActionButtons />
+          }
 
           {/* Readings section */}
           <div className="modal-section readings-section">
@@ -335,6 +339,11 @@ export default function BatteryModal({
               </div>
             )}
           </div>
+
+          {/* Large back button — always visible at bottom for mobile */}
+          <button className="modal-back-btn" onClick={onClose}>
+            ← Back
+          </button>
         </div>
       </div>
     </div>
