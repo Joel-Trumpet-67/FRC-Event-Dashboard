@@ -12,8 +12,8 @@ permissions:
 
 # Only one deployment at a time
 concurrency:
-  group: pages
-  cancel-in-progress: true
+  group: battery-life-pages-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   build:
