@@ -1,0 +1,16 @@
+{
+  "name": "FRC Battery Tracker",
+  "short_name": "Battery Pit",
+  "description": "FRC pit battery management tracker",
+  "start_url": "/Battery-Life/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "icons": [
+    {
+      "src": "/battery-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

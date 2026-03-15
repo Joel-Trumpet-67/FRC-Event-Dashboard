@@ -1,0 +1,922 @@
+/* ─── Reset & base ─────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+:root {
+  --bg:          #0f172a;
+  --surface:     #1e293b;
+  --surface2:    #273449;
+  --border:      #334155;
+  --text:        #f1f5f9;
+  --text-muted:  #94a3b8;
+  --accent:      #38bdf8;
+
+  --red:         #ef4444;
+  --amber:       #f59e0b;
+  --orange:      #f97316;
+  --green:       #22c55e;
+  --blue:        #3b82f6;
+
+  --radius:      12px;
+  --radius-sm:   8px;
+}
+
+html, body {
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 16px;
+  overscroll-behavior: none;
+}
+
+#root {
+  height: 100%;
+}
+
+button {
+  cursor: pointer;
+  font-family: inherit;
+  font-size: inherit;
+  border: none;
+  background: none;
+  color: inherit;
+}
+
+input, textarea {
+  font-family: inherit;
+  font-size: inherit;
+  color: var(--text);
+  background: var(--surface2);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  width: 100%;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+input:focus, textarea:focus {
+  border-color: var(--accent);
+}
+
+/* ─── App layout ────────────────────────────────────────────── */
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  background: var(--bg);
+}
+
+.main-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 12px 80px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* ─── Header ────────────────────────────────────────────────── */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.header-logo {
+  font-size: 22px;
+}
+
+.header-title-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.header-title {
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+}
+
+.header-team {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.header-match {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--surface2);
+  border-radius: var(--radius);
+  padding: 4px 8px;
+}
+
+.match-btn {
+  font-size: 22px;
+  line-height: 1;
+  color: var(--accent);
+  padding: 4px 6px;
+  border-radius: 6px;
+  transition: background 0.1s;
+  min-width: 36px;
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.match-btn:active {
+  background: var(--border);
+}
+
+.match-display {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 40px;
+}
+
+.match-label {
+  font-size: 10px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.match-number {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--accent);
+  line-height: 1.1;
+}
+
+.icon-btn {
+  font-size: 22px;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: background 0.1s;
+}
+
+.icon-btn:active {
+  background: var(--surface2);
+}
+
+/* ─── Status Banner ─────────────────────────────────────────── */
+.status-banner {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.banner-card {
+  background: var(--surface);
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 90px;
+  transition: transform 0.1s, opacity 0.1s;
+}
+
+.banner-card.clickable {
+  cursor: pointer;
+}
+
+.banner-card.clickable:active {
+  transform: scale(0.97);
+  opacity: 0.85;
+}
+
+.banner-card.in-bot-card {
+  border-color: #1d4ed8;
+}
+
+.banner-card.use-next-card {
+  border-color: #15803d;
+}
+
+.banner-card.warn {
+  border-color: #b45309;
+}
+
+.banner-card-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--text-muted);
+}
+
+.banner-card-name {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.banner-card-sub {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.banner-card-voltage {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--green);
+  margin-top: 2px;
+}
+
+.banner-card-empty {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+.warn-text {
+  color: var(--amber);
+}
+
+.banner-progress-bar {
+  height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-top: 4px;
+}
+
+.banner-progress-fill {
+  height: 100%;
+  background: var(--green);
+  border-radius: 2px;
+  transition: width 0.5s;
+}
+
+/* ─── Battery Grid ──────────────────────────────────────────── */
+.battery-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+/* ─── Battery Card ──────────────────────────────────────────── */
+.battery-card {
+  position: relative;
+  border: 2px solid;
+  border-radius: var(--radius);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  text-align: left;
+  min-height: 120px;
+  transition: transform 0.1s, box-shadow 0.1s;
+  cursor: pointer;
+}
+
+.battery-card:active {
+  transform: scale(0.96);
+}
+
+.battery-card.best-next {
+  box-shadow: 0 0 0 3px #22c55e, 0 0 12px #22c55e44;
+}
+
+.best-badge {
+  position: absolute;
+  top: -10px;
+  right: 8px;
+  background: var(--green);
+  color: #000;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.5px;
+  padding: 2px 8px;
+  border-radius: 99px;
+  text-transform: uppercase;
+}
+
+.card-status-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.card-icon {
+  font-size: 16px;
+}
+
+.card-status-text {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+}
+
+.card-label {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.card-elapsed {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.card-progress-track {
+  height: 4px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 2px;
+  overflow: hidden;
+  margin: 2px 0;
+}
+
+.card-progress-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.5s;
+}
+
+.card-voltage {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--green);
+}
+
+.card-voltage.warn {
+  color: var(--amber);
+}
+
+.voltage-warn-dot {
+  margin-left: 3px;
+}
+
+.card-cycles {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* ─── Legend ────────────────────────────────────────────────── */
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  justify-content: center;
+  padding: 8px 0 4px;
+}
+
+.legend-item {
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* ─── Modal overlay ─────────────────────────────────────────── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.65);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: 100;
+  padding: 0;
+  animation: fade-in 0.15s ease;
+}
+
+@keyframes fade-in {
+  from { opacity: 0 }
+  to   { opacity: 1 }
+}
+
+.modal {
+  background: var(--surface);
+  border-radius: var(--radius) var(--radius) 0 0;
+  width: 100%;
+  max-width: 480px;
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+  animation: slide-up 0.2s ease;
+}
+
+@keyframes slide-up {
+  from { transform: translateY(100%) }
+  to   { transform: translateY(0) }
+}
+
+.settings-modal {
+  /* Settings can be a bit shorter */
+  max-height: 80vh;
+}
+
+.modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 16px 16px 12px;
+  border-bottom: 2px solid;
+  flex-shrink: 0;
+}
+
+.settings-header {
+  border-color: var(--border);
+}
+
+.modal-header-left {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+
+.modal-title {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  padding: 0;
+}
+
+.modal-status-pill {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+  padding: 3px 10px;
+  border-radius: 99px;
+  color: #000;
+  align-self: flex-start;
+}
+
+.modal-close {
+  font-size: 20px;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  color: var(--text-muted);
+  flex-shrink: 0;
+  margin-left: 8px;
+  transition: background 0.1s;
+}
+
+.modal-close:active {
+  background: var(--surface2);
+}
+
+.modal-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 16px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* ─── Charge progress in modal ──────────────────────────────── */
+.charge-progress-container {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.charge-progress-track {
+  height: 16px;
+  background: var(--surface2);
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+
+.charge-progress-fill {
+  height: 100%;
+  border-radius: 8px;
+  transition: width 0.5s;
+  min-width: 4px;
+}
+
+.charge-progress-label {
+  font-size: 13px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.modal-elapsed {
+  font-size: 15px;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 4px 0;
+}
+
+/* ─── Stats row ─────────────────────────────────────────────── */
+.stats-row {
+  display: flex;
+  gap: 8px;
+}
+
+.stat-box {
+  flex: 1;
+  background: var(--surface2);
+  border-radius: var(--radius-sm);
+  padding: 10px;
+  text-align: center;
+  border: 1px solid var(--border);
+}
+
+.stat-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.stat-value {
+  font-size: 18px;
+  font-weight: 700;
+  margin-top: 2px;
+}
+
+/* ─── Action buttons ────────────────────────────────────────── */
+.action-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 16px;
+  border-radius: var(--radius);
+  font-size: 17px;
+  font-weight: 700;
+  transition: opacity 0.1s, transform 0.1s;
+  min-height: 56px;
+}
+
+.action-btn:active {
+  opacity: 0.8;
+  transform: scale(0.98);
+}
+
+.action-btn.primary {
+  color: #000;
+}
+
+.action-btn.secondary {
+  background: transparent;
+  border: 2px solid;
+}
+
+.action-icon {
+  font-size: 20px;
+}
+
+.action-label {
+  flex: 1;
+  text-align: center;
+}
+
+/* ─── Readings section ──────────────────────────────────────── */
+.modal-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.section-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.readings-section {}
+
+.readings-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.reading-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.reading-label {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.reading-input {
+  font-size: 18px;
+  font-weight: 700;
+  text-align: center;
+  padding: 10px;
+}
+
+.reading-hint {
+  font-size: 11px;
+  text-align: center;
+}
+
+.reading-hint.ok {
+  color: var(--green);
+}
+
+.reading-hint.warn {
+  color: var(--amber);
+}
+
+.save-readings-btn {
+  background: var(--accent);
+  color: #000;
+  font-weight: 700;
+  padding: 12px;
+  border-radius: var(--radius-sm);
+  font-size: 15px;
+  transition: opacity 0.1s;
+}
+
+.save-readings-btn:active {
+  opacity: 0.8;
+}
+
+/* ─── Notes ─────────────────────────────────────────────────── */
+.notes-input {
+  resize: none;
+  font-size: 14px;
+}
+
+/* ─── Label edit ─────────────────────────────────────────────── */
+.label-edit-row {
+  display: flex;
+  gap: 8px;
+}
+
+.label-input {
+  font-size: 20px;
+  font-weight: 800;
+  padding: 4px 8px;
+}
+
+/* ─── Timestamps ─────────────────────────────────────────────── */
+.timestamp-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: var(--surface2);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+}
+
+.timestamp-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.ts-label {
+  color: var(--text-muted);
+}
+
+.ts-value {
+  font-weight: 600;
+  text-align: right;
+}
+
+/* ─── History log ────────────────────────────────────────────── */
+.history-toggle {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  text-align: left;
+  cursor: pointer;
+  padding: 0;
+}
+
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 200px;
+  overflow-y: auto;
+  background: var(--surface2);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+}
+
+.history-empty {
+  font-size: 13px;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 8px 0;
+}
+
+.history-row {
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 6px;
+}
+
+.history-row:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.history-action {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.history-meta {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.history-details {
+  font-style: italic;
+}
+
+/* ─── Settings panel ─────────────────────────────────────────── */
+.setting-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.setting-label {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.setting-hint {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.setting-input {
+  font-size: 16px;
+}
+
+.save-settings-btn {
+  background: var(--green);
+  color: #000;
+  font-size: 16px;
+  font-weight: 700;
+  padding: 14px;
+  border-radius: var(--radius);
+  transition: opacity 0.1s;
+}
+
+.save-settings-btn:active {
+  opacity: 0.8;
+}
+
+/* ─── Danger zone ────────────────────────────────────────────── */
+.danger-zone {
+  border-top: 1px solid var(--border);
+  padding-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.danger-title {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--red);
+}
+
+.reset-btn {
+  background: transparent;
+  border: 2px solid var(--red);
+  color: var(--red);
+  font-weight: 700;
+  padding: 12px;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  transition: background 0.15s, color 0.15s;
+}
+
+.reset-btn.confirm {
+  background: var(--red);
+  color: #fff;
+}
+
+.reset-btn:active {
+  opacity: 0.8;
+}
+
+.cancel-reset-btn {
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  padding: 10px;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+}
+
+/* ─── Pulse animation for charging ──────────────────────────── */
+@keyframes pulse-amber {
+  0%, 100% { opacity: 1 }
+  50%       { opacity: 0.55 }
+}
+
+.battery-card[style*="rgb(69, 26, 3)"] .card-status-text,
+.battery-card[style*="rgb(69, 26, 3)"] .card-icon {
+  animation: pulse-amber 2s ease-in-out infinite;
+}
+
+/* ─── Scrollbar styling ──────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 2px;
+}
+
+/* ─── Safe area for notched phones ──────────────────────────── */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .main-content {
+    padding-bottom: calc(80px + env(safe-area-inset-bottom));
+  }
+  .modal {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* ─── Landscape / tablet adjustments ────────────────────────── */
+@media (min-width: 480px) {
+  .battery-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (orientation: landscape) and (max-height: 500px) {
+  .status-banner {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .battery-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .banner-card {
+    min-height: 70px;
+    padding: 8px 12px;
+  }
+}
