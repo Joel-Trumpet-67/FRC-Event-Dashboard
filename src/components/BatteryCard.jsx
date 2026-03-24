@@ -16,9 +16,10 @@ import {
 const STATUS_ICON = {
   depleted: '🔴',
   charging: '🔋',
-  cooling: '❄️',
-  ready: '✅',
-  in_bot: '🤖',
+  cooling:  '❄️',
+  ready:    '✅',
+  standby:  '⏸️',
+  in_bot:   '🤖',
 }
 
 /**
@@ -128,10 +129,6 @@ const BatteryCard = React.memo(function BatteryCard({ battery, isBestNext, charg
       {/* Cycle count */}
       <div className="card-cycles">Cycles: {battery.cycleCount}</div>
 
-      {/* Spare badge */}
-      {battery.isSpare && (
-        <div className="spare-badge">★ SPARE</div>
-      )}
     </button>
   )
 })

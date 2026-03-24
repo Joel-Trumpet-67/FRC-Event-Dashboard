@@ -117,7 +117,7 @@ export default function App() {
     updateReadings,
     updateMeta,
     resetAll,
-    toggleSpare,
+    markStandby,
   } = useBatteries(settings.batteryCount, settings.syncCode, handleSyncStatus)
 
   // ---------------------------------------------------------------------------
@@ -190,8 +190,8 @@ export default function App() {
   // Put battery in bot AND close the detail modal
   function handlePutInBot(id) { putInBot(id); closeModal() }
 
-  // Toggle spare flag on a battery (does not close the modal)
-  function handleToggleSpare(id) { toggleSpare(id) }
+  // Mark a battery as standby (does not close the modal)
+  function handleMarkStandby(id) { markStandby(id) }
 
   // ==========================================================================
   // SECTION 6 — RENDER
@@ -255,6 +255,7 @@ export default function App() {
           <span className="legend-item" style={{ color: '#f59e0b' }}>● Charging</span>
           <span className="legend-item" style={{ color: '#f97316' }}>● Cooling</span>
           <span className="legend-item" style={{ color: '#22c55e' }}>● Ready</span>
+          <span className="legend-item" style={{ color: '#8b5cf6' }}>● Standby</span>
           <span className="legend-item" style={{ color: '#3b82f6' }}>● In Bot</span>
         </div>
       </main>
@@ -275,7 +276,7 @@ export default function App() {
           onMarkDepleted={() => { markDepleted(modalBattery.id); closeModal() }}
           onUpdateReadings={(data) => updateReadings(modalBattery.id, data)}
           onUpdateMeta={(data) => updateMeta(modalBattery.id, data)}
-          onToggleSpare={() => handleToggleSpare(modalBattery.id)}
+          onMarkStandby={() => handleMarkStandby(modalBattery.id)}
         />
       )}
 

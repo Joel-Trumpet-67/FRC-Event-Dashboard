@@ -27,7 +27,7 @@ export default function BatteryModal({
   onMarkDepleted,
   onUpdateReadings,
   onUpdateMeta,
-  onToggleSpare,
+  onMarkStandby,
 }) {
   const [voltageInput, setVoltageInput] = useState(
     battery.voltage != null ? String(battery.voltage) : ''
@@ -64,6 +64,8 @@ export default function BatteryModal({
   } else if (battery.status === STATUS.IN_BOT && battery.putInBotTime) {
     elapsedMs = now - battery.putInBotTime
   } else if (battery.status === STATUS.READY && battery.chargeEndTime) {
+    elapsedMs = now - battery.chargeEndTime
+  } else if (battery.status === STATUS.STANDBY && battery.chargeEndTime) {
     elapsedMs = now - battery.chargeEndTime
   }
 
@@ -116,6 +118,15 @@ export default function BatteryModal({
         return (
           <div className="action-group">
             <ActionBtn color="#3b82f6" icon="🤖" label="Put in Bot" onClick={onPutInBot} />
+            <ActionBtn color="#8b5cf6" icon="⏸" label="Mark Standby" onClick={onMarkStandby} secondary />
+            <ActionBtn color="#ef4444" icon="✖" label="Mark Depleted" onClick={onMarkDepleted} secondary />
+          </div>
+        )
+      case STATUS.STANDBY:
+        return (
+          <div className="action-group">
+            <ActionBtn color="#3b82f6" icon="🤖" label="Put in Bot" onClick={onPutInBot} />
+            <ActionBtn color="#22c55e" icon="✅" label="Mark Ready" onClick={onMarkReady} secondary />
             <ActionBtn color="#ef4444" icon="✖" label="Mark Depleted" onClick={onMarkDepleted} secondary />
           </div>
         )
@@ -187,9 +198,10 @@ export default function BatteryModal({
 
             {elapsedMs !== null && chargeProgress === null && (
               <div className="modal-elapsed">
-                {battery.status === STATUS.IN_BOT && '🤖 In bot for: '}
-                {battery.status === STATUS.COOLING && '❄️ Cooling for: '}
-                {battery.status === STATUS.READY && '✅ Ready for: '}
+                {battery.status === STATUS.IN_BOT   && '🤖 In bot for: '}
+                {battery.status === STATUS.COOLING  && '❄️ Cooling for: '}
+                {battery.status === STATUS.READY    && '✅ Ready for: '}
+                {battery.status === STATUS.STANDBY  && '⏸ On standby for: '}
                 <strong>{formatElapsed(elapsedMs)}</strong>
               </div>
             )}
@@ -225,15 +237,6 @@ export default function BatteryModal({
             : <ActionButtons />
           }
 
-          {/* Spare battery toggle — marks this battery as the cart spare */}
-          {!viewOnly && (
-            <button
-              className={`spare-btn ${battery.isSpare ? 'spare-active' : ''}`}
-              onClick={onToggleSpare}
-            >
-              {battery.isSpare ? '★ Remove Spare' : '☆ Mark as Spare'}
-            </button>
-          )}
 
           {/* Readings section */}
           <div className="modal-section readings-section">

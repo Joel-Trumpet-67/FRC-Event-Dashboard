@@ -42,10 +42,6 @@ export function createBattery(id) {
     // History log — array of { action, timestamp, details } objects
     // Capped at 50 entries. See addHistory() below.
     history:             [],
-
-    // Whether this battery is designated as the spare on the cart.
-    // Toggled by the user via the battery detail modal.
-    isSpare:             false,
   }
 }
 

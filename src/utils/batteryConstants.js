@@ -17,6 +17,7 @@ export const STATUS = {
   CHARGING: 'charging', // on the charger, timestamp recorded
   COOLING:  'cooling',  // recently removed from bot or charger, needs to cool
   READY:    'ready',    // fully charged and available to use
+  STANDBY:  'standby',  // charged and held in reserve — not the primary next battery
   IN_BOT:   'in_bot',   // currently installed in the robot
 }
 
@@ -29,6 +30,7 @@ export const STATUS_LABEL = {
   charging: 'Charging',
   cooling:  'Cooling',
   ready:    'Ready',
+  standby:  'Standby',
   in_bot:   'In Bot',
 }
 
@@ -41,6 +43,7 @@ export const STATUS_COLOR = {
   charging: '#f59e0b',  // amber
   cooling:  '#f97316',  // orange
   ready:    '#22c55e',  // green
+  standby:  '#8b5cf6',  // violet
   in_bot:   '#3b82f6',  // blue
 }
 
@@ -53,5 +56,6 @@ export const STATUS_BG = {
   charging: '#451a03',
   cooling:  '#431407',
   ready:    '#052e16',
+  standby:  '#2e1065',
   in_bot:   '#172554',
 }

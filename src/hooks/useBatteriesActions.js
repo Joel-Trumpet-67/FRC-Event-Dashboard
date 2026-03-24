@@ -184,14 +184,16 @@ export function useBatteriesActions(setBatteries, batteryCount, buildDefault) {
   }, [setBatteries, batteryCount, buildDefault])
 
   // ---------------------------------------------------------------------------
-  // toggleSpare — marks or unmarks a battery as the spare on the cart.
-  // Only one battery is typically spare, but no hard limit is enforced here —
-  // the UI can show a warning if more than one is marked spare.
+  // markStandby — moves a battery to STANDBY (charged but held in reserve).
+  // Standby batteries are excluded from the "USE NEXT" recommendation so
+  // the crew has explicit control over when this reserve battery gets used.
+  // Can be called from READY. To return to use, call markReady.
   // ---------------------------------------------------------------------------
-  const toggleSpare = useCallback((id) => {
-    setBatteries(prev => prev.map(b =>
-      b.id === id ? { ...b, isSpare: !b.isSpare } : b
-    ))
+  const markStandby = useCallback((id) => {
+    setBatteries(prev => prev.map(b => {
+      if (b.id !== id) return b
+      return addHistory({ ...b, status: STATUS.STANDBY }, 'Marked standby', 'Held in reserve')
+    }))
   }, [setBatteries])
 
   // ---------------------------------------------------------------------------
@@ -207,6 +209,6 @@ export function useBatteriesActions(setBatteries, batteryCount, buildDefault) {
     updateReadings,
     updateMeta,
     resetAll,
-    toggleSpare,
+    markStandby,
   }
 }

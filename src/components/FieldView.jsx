@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { getBestNextBattery, getInBotBattery, STATUS_COLOR } from '../utils/batteryLogic'
+import { getBestNextBattery, getInBotBattery, STATUS_COLOR, STATUS } from '../utils/batteryLogic'
 import { formatElapsed, estimateChargePercent } from '../utils/formatting'
 import SettingsPanel from './SettingsPanel'
 
@@ -20,7 +20,7 @@ export default function FieldView({ batteries, matchNumber, chargeThresholdMin, 
   const now = Date.now()
   const bestNext = getBestNextBattery(batteries, chargeThresholdMin)
   const inBot = getInBotBattery(batteries)
-  const spare = batteries.find(b => b.isSpare) ?? null
+  const spare = batteries.find(b => b.status === STATUS.STANDBY) ?? null
 
   const inBotElapsed = inBot?.putInBotTime ? now - inBot.putInBotTime : null
 
@@ -118,7 +118,7 @@ export default function FieldView({ batteries, matchNumber, chargeThresholdMin, 
         </div>
 
         <div className="field-spare-section">
-          <div className="field-section-label">★ SPARE</div>
+          <div className="field-section-label">⏸ STANDBY</div>
           {spare ? (
             <div className="field-spare-card">
               <span className="field-spare-name">{spare.label}</span>

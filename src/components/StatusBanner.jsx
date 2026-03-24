@@ -1,6 +1,6 @@
 import React from 'react'
 import { formatElapsed, estimateChargePercent } from '../utils/formatting'
-import { getNextReadyEta, STATUS_COLOR } from '../utils/batteryLogic'
+import { getNextReadyEta, STATUS_COLOR, STATUS } from '../utils/batteryLogic'
 
 /**
  * Full-width banner showing:
@@ -15,7 +15,7 @@ export default function StatusBanner({
   chargeThresholdMin,
   onBatteryClick,
 }) {
-  const spareBattery = batteries.find(b => b.isSpare) ?? null
+  const spareBattery = batteries.find(b => b.status === STATUS.STANDBY) ?? null
   const now = Date.now()
 
   // Elapsed time this battery has been in the bot
@@ -62,7 +62,7 @@ export default function StatusBanner({
         onClick={() => spareBattery && onBatteryClick(spareBattery)}
         role={spareBattery ? 'button' : undefined}
       >
-        <div className="banner-card-label">★ SPARE</div>
+        <div className="banner-card-label">⏸ STANDBY</div>
         {spareBattery ? (
           <>
             <div className="banner-card-name">{spareBattery.label}</div>

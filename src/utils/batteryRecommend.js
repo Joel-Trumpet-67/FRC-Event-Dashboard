@@ -29,7 +29,9 @@ export function getBestNextBattery(batteries, chargeThresholdMin = 60) {
   const thresholdMs = chargeThresholdMin * 60 * 1000
   const now = Date.now()
 
-  // Step 1: filter to only usable batteries
+  // Step 1: filter to only usable batteries.
+  // STANDBY batteries are intentionally excluded — they are held in reserve
+  // and should only be used when the crew explicitly chooses them.
   const candidates = batteries.filter(b => {
     if (b.status === STATUS.READY) return true
     if (b.status === STATUS.CHARGING && b.chargeStartTime) {
