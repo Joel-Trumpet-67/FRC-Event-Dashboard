@@ -134,40 +134,26 @@ export default function SchedulePanel({ settings, onClose }) {
     ])
 
     // --- Step 1: try the team-specific endpoint ---
-    let resolvedMatches = null
-    let fetchError      = null
+    let resolvedMatches = []
 
     try {
       const teamMatches = await fetchTeamMatches(teamNumber, eventCode, tbaKey)
-      if (Array.isArray(teamMatches) && teamMatches.length > 0) {
-        resolvedMatches = teamMatches
-      }
+      if (Array.isArray(teamMatches)) resolvedMatches = teamMatches
     } catch (err) {
-      fetchError = err.message
-    }
-
-    // --- Step 2: if Step 1 gave nothing, fetch ALL event matches and filter ---
-    if (!resolvedMatches) {
+      // --- Step 2: fall back to event-wide endpoint and filter by team ---
       try {
         const allMatches = await fetchEventMatches(eventCode, tbaKey)
         if (!Array.isArray(allMatches)) {
-          // TBA returned a non-array — likely an auth error object
           throw new Error(`Unexpected TBA response: ${JSON.stringify(allMatches).slice(0, 120)}`)
         }
         const key = `frc${teamNumber}`
-        const filtered = allMatches.filter(m =>
+        resolvedMatches = allMatches.filter(m =>
           m.alliances?.red?.team_keys?.includes(key) ||
           m.alliances?.blue?.team_keys?.includes(key)
         )
-        // If team not found in any match, show all matches so user can verify event
-        resolvedMatches = filtered.length > 0 ? filtered : allMatches
-        if (filtered.length === 0 && allMatches.length > 0) {
-          fetchError = `Team ${teamNumber} not found in any match at ${eventCode}. Showing all ${allMatches.length} matches — check your team number.`
-        }
-      } catch (err) {
-        // Both endpoints failed — surface the real error
+      } catch (fallbackErr) {
         setError(
-          `Could not load schedule.\n\n${fetchError ?? err.message}\n\n` +
+          `Could not load schedule.\n\n${fallbackErr.message}\n\n` +
           `Check your TBA API key and event code (${eventCode}).`
         )
         setLoading(false)
