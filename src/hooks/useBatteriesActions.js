@@ -191,6 +191,10 @@ export function useBatteriesActions(setBatteries, batteryCount, buildDefault) {
   // ---------------------------------------------------------------------------
   const markStandby = useCallback((id) => {
     setBatteries(prev => prev.map(b => {
+      // Only one standby at a time — bump any existing standby back to ready
+      if (b.id !== id && b.status === STATUS.STANDBY) {
+        return addHistory({ ...b, status: STATUS.READY }, 'Standby cleared', 'Replaced by new standby')
+      }
       if (b.id !== id) return b
       return addHistory({ ...b, status: STATUS.STANDBY }, 'Marked standby', 'Held in reserve')
     }))
