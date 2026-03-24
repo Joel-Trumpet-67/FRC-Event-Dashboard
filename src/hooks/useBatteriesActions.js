@@ -1,0 +1,210 @@
+// =============================================================================
+// useBatteriesActions.js
+//
+// EFFICIENCY TODOs:
+//   TODO [PERF-5]: All actions use prev.map() which creates a new array even
+//                  when only one battery changes. Consider using immer (produce)
+//                  to make immutable updates more efficient and readable —
+//                  especially useful if battery count grows large.
+//
+//   TODO [PERF-6]: updateReadings and updateMeta do not need to go through
+//                  addHistory for the metadata update — separate the two
+//                  concerns so history log writes don't trigger if only notes
+//                  or label changed (updateMeta already does this correctly —
+//                  make sure it stays that way).
+// -----------------------------------------------------------------------------
+// All battery status-transition actions. Called internally by useBatteries.js.
+//
+// Every action here:
+//   - Takes a battery ID
+//   - Finds that battery in the array via setBatteries
+//   - Returns a new battery object with the updated status + timestamps
+//   - Appends an entry to the battery's history log via addHistory()
+//
+// TODO: Add toggleSpare action here (see STOP 2 in the spare battery guide)
+// =============================================================================
+
+import { useCallback } from 'react'
+import { addHistory, STATUS } from '../utils/batteryLogic'
+
+// -----------------------------------------------------------------------------
+// useBatteriesActions
+//
+// @param {Function} setBatteries — the wrapped setter from useBatteries.js
+// @param {number}   batteryCount — current count, needed for resetAll default
+// @param {Function} buildDefault — function(count) that builds a fresh array
+//
+// @returns {object} — all action functions, ready to be returned by useBatteries
+// -----------------------------------------------------------------------------
+export function useBatteriesActions(setBatteries, batteryCount, buildDefault) {
+
+  // ---------------------------------------------------------------------------
+  // startCharging — puts a battery on the charger, records the start time
+  // ---------------------------------------------------------------------------
+  const startCharging = useCallback((id) => {
+    setBatteries(prev => prev.map(b => {
+      if (b.id !== id) return b
+      return addHistory({
+        ...b,
+        status:          STATUS.CHARGING,
+        chargeStartTime: Date.now(),
+        chargeEndTime:   null,
+      }, 'Started charging', `Status was: ${b.status}`)
+    }))
+  }, [setBatteries])
+
+  // ---------------------------------------------------------------------------
+  // markReady — marks a battery as fully charged, records the end time
+  // ---------------------------------------------------------------------------
+  const markReady = useCallback((id) => {
+    setBatteries(prev => prev.map(b => {
+      if (b.id !== id) return b
+      return addHistory({
+        ...b,
+        status:        STATUS.READY,
+        chargeEndTime: Date.now(),
+      }, 'Marked ready', 'Charge complete')
+    }))
+  }, [setBatteries])
+
+  // ---------------------------------------------------------------------------
+  // cancelCharging — cancels a charge in progress, reverts battery to depleted
+  // ---------------------------------------------------------------------------
+  const cancelCharging = useCallback((id) => {
+    setBatteries(prev => prev.map(b => {
+      if (b.id !== id) return b
+      return addHistory({
+        ...b,
+        status:          STATUS.DEPLETED,
+        chargeStartTime: null,
+        chargeEndTime:   null,
+      }, 'Charge cancelled')
+    }))
+  }, [setBatteries])
+
+  // ---------------------------------------------------------------------------
+  // putInBot — installs a battery into the robot, increments cycle count.
+  // If another battery is already IN_BOT it is automatically moved to COOLING.
+  // ---------------------------------------------------------------------------
+  const putInBot = useCallback((id) => {
+    setBatteries(prev => {
+      const now = Date.now()
+      return prev.map(b => {
+        if (b.id === id) {
+          const updated = {
+            ...b,
+            status:              STATUS.IN_BOT,
+            putInBotTime:        now,
+            removedFromBotTime:  null,
+            cycleCount:          b.cycleCount + 1,
+          }
+          return addHistory(updated, 'Put in bot', `Cycle #${updated.cycleCount}`)
+        }
+        // Auto-move the previous in-bot battery to cooling
+        if (b.status === STATUS.IN_BOT) {
+          return addHistory({
+            ...b,
+            status:             STATUS.COOLING,
+            removedFromBotTime: now,
+            coolStartTime:      now,
+          }, 'Removed from bot (auto)', 'Replaced by new battery')
+        }
+        return b
+      })
+    })
+  }, [setBatteries])
+
+  // ---------------------------------------------------------------------------
+  // removeFromBot — takes a battery out of the robot manually.
+  // @param {boolean} depleted — if true, marks it depleted instead of cooling
+  // ---------------------------------------------------------------------------
+  const removeFromBot = useCallback((id, depleted = false) => {
+    setBatteries(prev => prev.map(b => {
+      if (b.id !== id) return b
+      const now = Date.now()
+      return addHistory({
+        ...b,
+        status:             depleted ? STATUS.DEPLETED : STATUS.COOLING,
+        removedFromBotTime: now,
+        coolStartTime:      depleted ? null : now,
+      }, depleted ? 'Removed from bot (depleted)' : 'Removed from bot (cooling)')
+    }))
+  }, [setBatteries])
+
+  // ---------------------------------------------------------------------------
+  // markDepleted — manually marks a battery as depleted, clears all timestamps
+  // ---------------------------------------------------------------------------
+  const markDepleted = useCallback((id) => {
+    setBatteries(prev => prev.map(b => {
+      if (b.id !== id) return b
+      return addHistory({
+        ...b,
+        status:             STATUS.DEPLETED,
+        chargeStartTime:    null,
+        chargeEndTime:      null,
+        coolStartTime:      null,
+        putInBotTime:       null,
+        removedFromBotTime: null,
+      }, 'Marked depleted')
+    }))
+  }, [setBatteries])
+
+  // ---------------------------------------------------------------------------
+  // updateReadings — saves a new voltage and/or IR measurement.
+  // Both fields are optional — only provided values are updated.
+  // ---------------------------------------------------------------------------
+  const updateReadings = useCallback((id, { voltage, internalResistance }) => {
+    setBatteries(prev => prev.map(b => {
+      if (b.id !== id) return b
+      const patch = {}
+      if (voltage            !== undefined) patch.voltage            = voltage
+      if (internalResistance !== undefined) patch.internalResistance = internalResistance
+      const details = [
+        voltage            !== undefined ? `${voltage}V`      : null,
+        internalResistance !== undefined ? `${internalResistance}mΩ` : null,
+      ].filter(Boolean).join(', ')
+      return addHistory({ ...b, ...patch }, 'Readings updated', details)
+    }))
+  }, [setBatteries])
+
+  // ---------------------------------------------------------------------------
+  // updateMeta — updates the display label and/or notes. Does NOT log to history.
+  // ---------------------------------------------------------------------------
+  const updateMeta = useCallback((id, { label, notes }) => {
+    setBatteries(prev => prev.map(b => {
+      if (b.id !== id) return b
+      const patch = {}
+      if (label !== undefined) patch.label = label
+      if (notes !== undefined) patch.notes = notes
+      return { ...b, ...patch }
+    }))
+  }, [setBatteries])
+
+  // ---------------------------------------------------------------------------
+  // resetAll — wipes everything and rebuilds the array from scratch.
+  // @param {number} newCount — defaults to current batteryCount from settings
+  // ---------------------------------------------------------------------------
+  const resetAll = useCallback((newCount = batteryCount) => {
+    setBatteries(buildDefault(newCount))
+  }, [setBatteries, batteryCount, buildDefault])
+
+  // ---------------------------------------------------------------------------
+  // TODO: ADD toggleSpare ACTION HERE (STOP 2 from the spare battery guide)
+  // ---------------------------------------------------------------------------
+
+  // ---------------------------------------------------------------------------
+  // Return all actions so useBatteries.js can expose them to components
+  // ---------------------------------------------------------------------------
+  return {
+    startCharging,
+    markReady,
+    cancelCharging,
+    putInBot,
+    removeFromBot,
+    markDepleted,
+    updateReadings,
+    updateMeta,
+    resetAll,
+    // TODO: ADD toggleSpare HERE once written above
+  }
+}

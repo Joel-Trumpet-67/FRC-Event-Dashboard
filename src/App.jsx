@@ -1,11 +1,42 @@
+// =============================================================================
+// App.jsx
+//
+// EFFICIENCY TODOs:
+//   TODO [PERF-7]: The 10-second tick (setInterval) forces a full re-render of
+//                  the entire app just to update elapsed time displays. Move the
+//                  tick into the components that actually need it (BatteryCard,
+//                  BatteryModal) so only those re-render, not the whole tree.
+//
+//   TODO [PERF-8]: BatteryGrid re-renders all cards whenever ANY battery changes.
+//                  Wrap BatteryCard in React.memo so only the specific card whose
+//                  data changed re-renders.
+// -----------------------------------------------------------------------------
+// Root component. Owns all top-level state and wires every sub-component together.
+//
+// Responsibilities:
+//   - Load and persist settings (team number, thresholds, battery count, sync)
+//   - Load and persist match number
+//   - Pass settings into useBatteries hook
+//   - Delegate modal state to useModals hook
+//   - Handle Firebase sync status display
+//   - Decide whether to render normal pit view or field/view-only view
+// =============================================================================
+
 import React, { useState, useEffect, useCallback } from 'react'
-import Header from './components/Header'
-import StatusBanner from './components/StatusBanner'
-import BatteryGrid from './components/BatteryGrid'
-import BatteryModal from './components/BatteryModal'
+
+// --- Components ---
+import Header        from './components/Header'
+import StatusBanner  from './components/StatusBanner'
+import BatteryGrid   from './components/BatteryGrid'
+import BatteryModal  from './components/BatteryModal'
 import SettingsPanel from './components/SettingsPanel'
-import FieldView from './components/FieldView'
+import FieldView     from './components/FieldView'
+
+// --- Hooks ---
 import { useBatteries } from './hooks/useBatteries'
+import { useModals }    from './hooks/useModals'
+
+// --- Utils ---
 import { getBestNextBattery, getInBotBattery } from './utils/batteryLogic'
 import {
   loadSettings,
@@ -15,34 +46,68 @@ import {
 } from './utils/storage'
 import { isFirebaseConfigured } from './firebase'
 
+// =============================================================================
+// SECTION 1 — DEFAULT SETTINGS
+// -----------------------------------------------------------------------------
+// Fallback values used on first launch (before anything is saved to localStorage).
+// Merged with any previously saved settings at startup.
+// =============================================================================
 const DEFAULT_SETTINGS = {
-  teamNumber: '',
-  batteryCount: 6,
-  chargeThreshold: 60,
-  coolThreshold: 15,
-  syncCode: '',
-  viewOnly: false,
+  teamNumber:      '',    // FRC team number (display only)
+  batteryCount:    6,     // how many batteries to track
+  chargeThreshold: 60,    // minutes before a charging battery is considered "ready"
+  coolThreshold:   15,    // minutes a battery should cool before re-charging
+  syncCode:        '',    // shared Firebase room key — empty = local-only mode
+  viewOnly:        false, // if true, hides all action buttons (field phone mode)
 }
 
-// ?field in URL forces field view without needing settings
+// =============================================================================
+// SECTION 2 — URL FLAGS
+// -----------------------------------------------------------------------------
+// ?field in the URL immediately forces field/view-only mode, bypassing settings.
+// Useful for a dedicated field-side phone that never needs pit controls.
+// =============================================================================
 const URL_FIELD_MODE = new URLSearchParams(window.location.search).has('field')
 
+// =============================================================================
+// COMPONENT
+// =============================================================================
 export default function App() {
+
+  // ---------------------------------------------------------------------------
+  // STATE — Settings
+  // Merges saved settings from localStorage with defaults on first render.
+  // ---------------------------------------------------------------------------
   const [settings, setSettings] = useState(() => ({
     ...DEFAULT_SETTINGS,
     ...(loadSettings() || {}),
   }))
 
+  // ---------------------------------------------------------------------------
+  // STATE — Match Number
+  // Loaded from localStorage. User increments this before each match.
+  // ---------------------------------------------------------------------------
   const [matchNumber, setMatchNumber] = useState(loadMatchNumber)
 
+  // ---------------------------------------------------------------------------
+  // STATE — Firebase Sync Status
+  //   'local'  = no sync code or Firebase not configured
+  //   'live'   = connected and receiving updates
+  //   'error'  = sync code set but connection failed
+  // ---------------------------------------------------------------------------
   const [syncStatus, setSyncStatus] = useState(
     isFirebaseConfigured && settings.syncCode ? 'error' : 'local'
   )
 
+  // Callback passed to useBatteries — fires whenever Firebase connection changes
   const handleSyncStatus = useCallback((connected) => {
     setSyncStatus(connected ? 'live' : 'error')
   }, [])
 
+  // ---------------------------------------------------------------------------
+  // HOOK — Battery State + Actions
+  // All battery data, sync, and status-transition actions.
+  // ---------------------------------------------------------------------------
   const {
     batteries,
     startCharging,
@@ -54,50 +119,82 @@ export default function App() {
     updateReadings,
     updateMeta,
     resetAll,
+    // TODO: ADD toggleSpare HERE — destructure it from useBatteries once added
   } = useBatteries(settings.batteryCount, settings.syncCode, handleSyncStatus)
 
-  const [selectedBattery, setSelectedBattery] = useState(null)
-  const [showSettings, setShowSettings] = useState(false)
+  // ---------------------------------------------------------------------------
+  // HOOK — Modal State
+  // Manages battery detail modal and settings panel open/close + back button.
+  // ---------------------------------------------------------------------------
+  const {
+    selectedBattery,
+    setSelectedBattery,
+    showSettings,
+    setShowSettings,
+    closeModal,
+  } = useModals()
 
-  useEffect(() => {
-    if (selectedBattery || showSettings) {
-      window.history.pushState({ modal: true }, '')
-    }
-  }, [selectedBattery, showSettings])
+  // ==========================================================================
+  // SECTION 3 — SIDE EFFECTS
+  // ==========================================================================
 
-  useEffect(() => {
-    function handlePopState() {
-      if (selectedBattery) { setSelectedBattery(null); return }
-      if (showSettings) { setShowSettings(false); return }
-    }
-    window.addEventListener('popstate', handlePopState)
-    return () => window.removeEventListener('popstate', handlePopState)
-  }, [selectedBattery, showSettings])
-
+  // 10-second tick — forces re-render so elapsed times stay current
   const [tick, setTick] = useState(0)
   useEffect(() => {
     const id = setInterval(() => setTick(t => t + 1), 10_000)
     return () => clearInterval(id)
   }, [])
 
+  // Persist settings to localStorage whenever they change
   useEffect(() => { saveSettings(settings) }, [settings])
+
+  // Persist match number to localStorage whenever it changes
   useEffect(() => { saveMatchNumber(matchNumber) }, [matchNumber])
+
+  // Reset sync status to 'local' when syncCode is cleared
   useEffect(() => {
     if (!isFirebaseConfigured || !settings.syncCode) setSyncStatus('local')
   }, [settings.syncCode])
 
+  // ==========================================================================
+  // SECTION 4 — DERIVED STATE
+  // Computed fresh each render from the current battery array + settings.
+  // ==========================================================================
+
+  // The battery the pit crew should grab next
   const bestNext = getBestNextBattery(batteries, settings.chargeThreshold)
+
+  // The battery currently installed in the robot (or null)
   const inBotBattery = getInBotBattery(batteries)
+
+  // The battery whose detail modal is open — kept in sync with the live array
   const modalBattery = selectedBattery
     ? batteries.find(b => b.id === selectedBattery.id) || null
     : null
 
-  function closeModal() { setSelectedBattery(null) }
+  // ==========================================================================
+  // SECTION 5 — EVENT HANDLERS
+  // Thin wrappers combining hook actions with UI side-effects.
+  // ==========================================================================
+
+  // Save updated settings from SettingsPanel
   function handleSaveSettings(newSettings) { setSettings(newSettings) }
-  function handleResetAll(count) { resetAll(count); setSelectedBattery(null) }
+
+  // Reset all battery data (called from SettingsPanel danger zone)
+  function handleResetAll(count) { resetAll(count); closeModal() }
+
+  // Put battery in bot AND close the detail modal
   function handlePutInBot(id) { putInBot(id); closeModal() }
 
-  // Field view: triggered by ?field URL param OR viewOnly setting
+  // TODO: ADD handleToggleSpare HANDLER HERE once toggleSpare is in useBatteries:
+  //   function handleToggleSpare(id) { toggleSpare(id) }
+
+  // ==========================================================================
+  // SECTION 6 — RENDER
+  // Field mode = simplified read-only view (no action buttons).
+  // Normal mode = full pit management UI.
+  // ==========================================================================
+
   const isFieldMode = URL_FIELD_MODE || settings.viewOnly
 
   if (isFieldMode) {
@@ -118,6 +215,8 @@ export default function App() {
 
   return (
     <div className="app">
+
+      {/* Top bar: team number, match counter, sync indicator, settings button */}
       <Header
         teamNumber={settings.teamNumber}
         matchNumber={matchNumber}
@@ -127,6 +226,8 @@ export default function App() {
       />
 
       <main className="main-content">
+
+        {/* Banner: current in-bot battery + best next recommendation */}
         <StatusBanner
           batteries={batteries}
           inBotBattery={inBotBattery}
@@ -135,6 +236,7 @@ export default function App() {
           onBatteryClick={setSelectedBattery}
         />
 
+        {/* Grid: one card per battery — tap to open detail modal */}
         <BatteryGrid
           batteries={batteries}
           bestNext={bestNext}
@@ -143,6 +245,7 @@ export default function App() {
           onCardPress={setSelectedBattery}
         />
 
+        {/* Colour legend */}
         <div className="legend">
           <span className="legend-item" style={{ color: '#ef4444' }}>● Depleted</span>
           <span className="legend-item" style={{ color: '#f59e0b' }}>● Charging</span>
@@ -152,6 +255,7 @@ export default function App() {
         </div>
       </main>
 
+      {/* Battery detail modal — only rendered when a card is tapped */}
       {modalBattery && (
         <BatteryModal
           battery={modalBattery}
@@ -167,9 +271,12 @@ export default function App() {
           onMarkDepleted={() => { markDepleted(modalBattery.id); closeModal() }}
           onUpdateReadings={(data) => updateReadings(modalBattery.id, data)}
           onUpdateMeta={(data) => updateMeta(modalBattery.id, data)}
+          // TODO: ADD onToggleSpare PROP HERE once handler above is written:
+          //   onToggleSpare={() => handleToggleSpare(modalBattery.id)}
         />
       )}
 
+      {/* Settings panel — slides up when gear icon is tapped */}
       {showSettings && (
         <SettingsPanel
           settings={settings}
@@ -178,6 +285,7 @@ export default function App() {
           onClose={() => setShowSettings(false)}
         />
       )}
+
     </div>
   )
 }

@@ -1,31 +1,67 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
-import { ref, set, onValue, off } from 'firebase/database'
-import { createBattery, addHistory, STATUS } from '../utils/batteryLogic'
-import { loadBatteries, saveBatteries } from '../utils/storage'
-import { db, isFirebaseConfigured } from '../firebase'
+// =============================================================================
+// useBatteries.js
+//
+// EFFICIENCY TODOs:
+//   TODO [PERF-3]: Memoize bestNext and inBotBattery inside this hook using
+//                  useMemo so App.jsx doesn't recompute them on every render —
+//                  only recompute when batteries or chargeThreshold actually change.
+//
+//   TODO [PERF-4]: The resize useEffect runs on every render where batteryCount
+//                  didn't change (returns early, but still runs). This is fine
+//                  for now but could be optimised with a useRef to track previous
+//                  count and skip the effect entirely when unchanged.
+// -----------------------------------------------------------------------------
+// Central hook for all battery state. Composes the sync and actions sub-hooks.
+//
+// Sub-files:
+//   useBatteriesSync.js    — Firebase listener + localStorage persistence
+//   useBatteriesActions.js — all status-transition actions (startCharging, etc.)
+//
+// This file owns:
+//   - The batteries state array (useState)
+//   - The isRemoteUpdate ref (Firebase echo guard)
+//   - The internal setBatteries wrapper
+//   - The resize effect (adjusts array length when batteryCount setting changes)
+// =============================================================================
 
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { createBattery } from '../utils/batteryLogic'
+import { loadBatteries, saveBatteries } from '../utils/storage'
+import { useBatteriesSync } from './useBatteriesSync'
+import { useBatteriesActions } from './useBatteriesActions'
+
+// -----------------------------------------------------------------------------
+// CONSTANTS
+// -----------------------------------------------------------------------------
+
+// Default number of batteries if none specified via settings
 const DEFAULT_COUNT = 6
 
+// -----------------------------------------------------------------------------
+// HELPERS
+// Builds a fresh array of batteries with sequential IDs (1, 2, 3 … count).
+// Passed down to useBatteriesActions so resetAll can use it too.
+// -----------------------------------------------------------------------------
 function buildDefaultBatteries(count = DEFAULT_COUNT) {
   return Array.from({ length: count }, (_, i) => createBattery(i + 1))
 }
 
-/**
- * Central hook for all battery state management.
- *
- * When syncCode is provided AND Firebase is configured:
- *   - Listens to /rooms/{syncCode}/batteries in Firebase RTDB
- *   - Pushes every local state change to Firebase
- *   - All other devices with the same syncCode see changes in ~200ms
- *
- * When syncCode is empty or Firebase is not configured:
- *   - Falls back to localStorage only (original behavior)
- *
- * @param {number}   batteryCount
- * @param {string}   syncCode      - shared room key, e.g. "FRC1234"
- * @param {Function} onSyncStatus  - called with true (connected) / false
- */
+// =============================================================================
+// HOOK: useBatteries
+// -----------------------------------------------------------------------------
+// @param {number}   batteryCount  — how many batteries to track (from settings)
+// @param {string}   syncCode      — Firebase room key, empty = local-only mode
+// @param {Function} onSyncStatus  — callback(true/false) for connection status
+// =============================================================================
 export function useBatteries(batteryCount = DEFAULT_COUNT, syncCode = '', onSyncStatus = null) {
+
+  // ---------------------------------------------------------------------------
+  // STATE — Battery Array
+  // On first mount: load from localStorage if the saved count matches.
+  // Otherwise build a fresh default array.
+  // (useState only runs this initialiser once — the resize effect below handles
+  //  count changes after mount.)
+  // ---------------------------------------------------------------------------
   const [batteries, setBatteriesRaw] = useState(() => {
     const saved = loadBatteries()
     if (saved && Array.isArray(saved) && saved.length === batteryCount) {
@@ -34,65 +70,32 @@ export function useBatteries(batteryCount = DEFAULT_COUNT, syncCode = '', onSync
     return buildDefaultBatteries(batteryCount)
   })
 
-  // Track whether the most recent state change came from a remote Firebase update.
-  // Prevents echoing remote updates back to Firebase (infinite loop guard).
+  // ---------------------------------------------------------------------------
+  // REF — Remote Update Guard
+  // Set to true by useBatteriesSync when a change arrives FROM Firebase.
+  // Prevents useBatteriesSync from echoing that change back up to Firebase.
+  // ---------------------------------------------------------------------------
   const isRemoteUpdate = useRef(false)
 
-  // ─── Firebase real-time listener ───────────────────────────────────────────
-  useEffect(() => {
-    if (!isFirebaseConfigured || !syncCode) {
-      onSyncStatus?.(false)
-      return
-    }
+  // ---------------------------------------------------------------------------
+  // SYNC — Firebase + localStorage
+  // Delegates to useBatteriesSync (see useBatteriesSync.js)
+  // ---------------------------------------------------------------------------
+  useBatteriesSync(
+    batteries,
+    setBatteriesRaw,
+    syncCode,
+    onSyncStatus,
+    isRemoteUpdate,
+    saveBatteries,
+  )
 
-    const battRef = ref(db, `rooms/${syncCode}/batteries`)
-
-    const unsubscribe = onValue(
-      battRef,
-      (snapshot) => {
-        onSyncStatus?.(true)
-        const remoteData = snapshot.val()
-        if (!remoteData || !Array.isArray(remoteData)) return
-
-        // Firebase converts empty arrays [] to null — restore them
-        const sanitized = remoteData.map(b => ({
-          ...b,
-          history: Array.isArray(b.history) ? b.history : [],
-        }))
-
-        // Only update if data actually differs (avoids re-render on our own echo)
-        setBatteriesRaw(current => {
-          if (JSON.stringify(current) === JSON.stringify(sanitized)) return current
-          isRemoteUpdate.current = true
-          return sanitized
-        })
-      },
-      (error) => {
-        console.warn('Firebase sync error:', error)
-        onSyncStatus?.(false)
-      }
-    )
-
-    return () => off(battRef)
-  }, [syncCode]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // ─── Persist to localStorage + push to Firebase ────────────────────────────
-  useEffect(() => {
-    saveBatteries(batteries)
-
-    // If this came from Firebase, don't echo it back
-    if (isRemoteUpdate.current) {
-      isRemoteUpdate.current = false
-      return
-    }
-
-    if (!isFirebaseConfigured || !syncCode) return
-
-    const battRef = ref(db, `rooms/${syncCode}/batteries`)
-    set(battRef, batteries).catch(err => console.warn('Firebase write failed:', err))
-  }, [batteries, syncCode])
-
-  // ─── Resize batteries array when batteryCount changes ─────────────────────
+  // ---------------------------------------------------------------------------
+  // EFFECT — Resize Battery Array When batteryCount Setting Changes
+  // When the user changes the battery count in Settings:
+  //   - Increasing: appends new blank batteries to fill the extra slots
+  //   - Decreasing: trims batteries from the end of the array
+  // ---------------------------------------------------------------------------
   useEffect(() => {
     setBatteriesRaw(prev => {
       if (prev.length === batteryCount) return prev
@@ -104,148 +107,34 @@ export function useBatteries(batteryCount = DEFAULT_COUNT, syncCode = '', onSync
         )
         return [...prev, ...extras]
       }
-      // Trim excess batteries
+      // Trim excess batteries from the end
       return prev.slice(0, batteryCount)
     })
   }, [batteryCount])
 
-  // ─── Internal setter ───────────────────────────────────────────────────────
+  // ---------------------------------------------------------------------------
+  // INTERNAL SETTER — setBatteries
+  // Wraps setBatteriesRaw to support both direct values and updater functions.
+  // All action callbacks in useBatteriesActions use this instead of raw setter.
+  // ---------------------------------------------------------------------------
   const setBatteries = useCallback((updater) => {
     setBatteriesRaw(prev =>
       typeof updater === 'function' ? updater(prev) : updater
     )
   }, [])
 
-  // ─── Status transition actions ─────────────────────────────────────────────
+  // ---------------------------------------------------------------------------
+  // ACTIONS — Status Transitions
+  // Delegates to useBatteriesActions (see useBatteriesActions.js)
+  // ---------------------------------------------------------------------------
+  const actions = useBatteriesActions(setBatteries, batteryCount, buildDefaultBatteries)
 
-  const startCharging = useCallback((id) => {
-    setBatteries(prev => prev.map(b => {
-      if (b.id !== id) return b
-      return addHistory({
-        ...b,
-        status: STATUS.CHARGING,
-        chargeStartTime: Date.now(),
-        chargeEndTime: null,
-      }, 'Started charging', `Status was: ${b.status}`)
-    }))
-  }, [setBatteries])
-
-  const markReady = useCallback((id) => {
-    setBatteries(prev => prev.map(b => {
-      if (b.id !== id) return b
-      return addHistory({
-        ...b,
-        status: STATUS.READY,
-        chargeEndTime: Date.now(),
-      }, 'Marked ready', 'Charge complete')
-    }))
-  }, [setBatteries])
-
-  const cancelCharging = useCallback((id) => {
-    setBatteries(prev => prev.map(b => {
-      if (b.id !== id) return b
-      return addHistory({
-        ...b,
-        status: STATUS.DEPLETED,
-        chargeStartTime: null,
-        chargeEndTime: null,
-      }, 'Charge cancelled')
-    }))
-  }, [setBatteries])
-
-  const putInBot = useCallback((id) => {
-    setBatteries(prev => {
-      const now = Date.now()
-      return prev.map(b => {
-        if (b.id === id) {
-          const updated = {
-            ...b,
-            status: STATUS.IN_BOT,
-            putInBotTime: now,
-            removedFromBotTime: null,
-            cycleCount: b.cycleCount + 1,
-          }
-          return addHistory(updated, 'Put in bot', `Cycle #${updated.cycleCount}`)
-        }
-        if (b.status === STATUS.IN_BOT) {
-          return addHistory({
-            ...b,
-            status: STATUS.COOLING,
-            removedFromBotTime: now,
-            coolStartTime: now,
-          }, 'Removed from bot (auto)', 'Replaced by new battery')
-        }
-        return b
-      })
-    })
-  }, [setBatteries])
-
-  const removeFromBot = useCallback((id, depleted = false) => {
-    setBatteries(prev => prev.map(b => {
-      if (b.id !== id) return b
-      const now = Date.now()
-      return addHistory({
-        ...b,
-        status: depleted ? STATUS.DEPLETED : STATUS.COOLING,
-        removedFromBotTime: now,
-        coolStartTime: depleted ? null : now,
-      }, depleted ? 'Removed from bot (depleted)' : 'Removed from bot (cooling)')
-    }))
-  }, [setBatteries])
-
-  const markDepleted = useCallback((id) => {
-    setBatteries(prev => prev.map(b => {
-      if (b.id !== id) return b
-      return addHistory({
-        ...b,
-        status: STATUS.DEPLETED,
-        chargeStartTime: null,
-        chargeEndTime: null,
-        coolStartTime: null,
-        putInBotTime: null,
-        removedFromBotTime: null,
-      }, 'Marked depleted')
-    }))
-  }, [setBatteries])
-
-  const updateReadings = useCallback((id, { voltage, internalResistance }) => {
-    setBatteries(prev => prev.map(b => {
-      if (b.id !== id) return b
-      const patch = {}
-      if (voltage !== undefined) patch.voltage = voltage
-      if (internalResistance !== undefined) patch.internalResistance = internalResistance
-      const details = [
-        voltage !== undefined ? `${voltage}V` : null,
-        internalResistance !== undefined ? `${internalResistance}mΩ` : null,
-      ].filter(Boolean).join(', ')
-      return addHistory({ ...b, ...patch }, 'Readings updated', details)
-    }))
-  }, [setBatteries])
-
-  const updateMeta = useCallback((id, { label, notes }) => {
-    setBatteries(prev => prev.map(b => {
-      if (b.id !== id) return b
-      const patch = {}
-      if (label !== undefined) patch.label = label
-      if (notes !== undefined) patch.notes = notes
-      return { ...b, ...patch }
-    }))
-  }, [setBatteries])
-
-  const resetAll = useCallback((newCount = batteryCount) => {
-    setBatteries(buildDefaultBatteries(newCount))
-  }, [setBatteries, batteryCount])
-
+  // ---------------------------------------------------------------------------
+  // RETURN — Expose state and all actions to consuming components
+  // ---------------------------------------------------------------------------
   return {
     batteries,
-    startCharging,
-    markReady,
-    cancelCharging,
-    putInBot,
-    removeFromBot,
-    markDepleted,
-    updateReadings,
-    updateMeta,
-    resetAll,
+    ...actions,
+    // TODO: ADD toggleSpare HERE — destructure it from useBatteries once added
   }
 }
