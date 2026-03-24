@@ -67,10 +67,13 @@ export function useBatteriesSync(
         if (!remoteData || !Array.isArray(remoteData)) return
 
         // Firebase converts empty arrays [] to null — restore them on every battery
-        const sanitized = remoteData.map(b => ({
-          ...b,
-          history: Array.isArray(b.history) ? b.history : [],
-        }))
+        let seenStandby = false
+        const sanitized = remoteData.map(b => {
+          const base = { ...b, history: Array.isArray(b.history) ? b.history : [] }
+          if (base.status !== 'standby') return base
+          if (!seenStandby) { seenStandby = true; return base }
+          return { ...base, status: 'ready' } // enforce one standby max
+        })
 
         // Only update if data actually differs — avoids a re-render from our own echo
         setBatteriesRaw(current => {

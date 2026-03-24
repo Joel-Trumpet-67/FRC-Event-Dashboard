@@ -61,10 +61,18 @@ export function useBatteries(batteryCount = DEFAULT_COUNT, syncCode = '', onSync
   // ---------------------------------------------------------------------------
   const [batteries, setBatteriesRaw] = useState(() => {
     const saved = loadBatteries()
-    if (saved && Array.isArray(saved) && saved.length === batteryCount) {
-      return saved
-    }
-    return buildDefaultBatteries(batteryCount)
+    const source = (saved && Array.isArray(saved) && saved.length === batteryCount)
+      ? saved
+      : buildDefaultBatteries(batteryCount)
+
+    // Enforce one standby at a time on load — if old data has multiple,
+    // keep only the first and move the rest back to ready.
+    let seenStandby = false
+    return source.map(b => {
+      if (b.status !== 'standby') return b
+      if (!seenStandby) { seenStandby = true; return b }
+      return { ...b, status: 'ready' }
+    })
   })
 
   // ---------------------------------------------------------------------------
