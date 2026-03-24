@@ -120,14 +120,17 @@ export default function SchedulePanel({ settings, onClose }) {
     if (!tbaKey)     { setError('Enter your TBA API key in Settings first.'); setLoading(false); return }
     if (!eventCode)  { setError('Enter an event code in Settings first.\n\nExample: 2024casj\nFind yours at thebluealliance.com/events'); setLoading(false); return }
 
-    // Serve from cache if fresh enough and for the same team + event
+    // Serve from cache if fresh enough, same team + event, and non-empty matches.
+    // Skip cache if matches is empty — force a re-fetch so we don't permanently
+    // show "no matches" after a bad earlier fetch.
     if (!forceRefresh) {
       const cached = loadScheduleCache()
       if (
         cached &&
         cached.eventCode   === eventCode &&
         String(cached.teamNumber) === String(teamNumber) &&
-        Date.now() - cached.fetchedAt < CACHE_TTL_MS
+        Date.now() - cached.fetchedAt < CACHE_TTL_MS &&
+        Array.isArray(cached.matches) && cached.matches.length > 0
       ) {
         setMatches(cached.matches)
         setStats(cached.stats)
@@ -148,14 +151,26 @@ export default function SchedulePanel({ settings, onClose }) {
       fetchEventMatchPredictions(eventCode),
     ])
 
-    // --- Step 1: try the team-specific TBA endpoint ---
+    // --- Fetch matches ---
+    // Strategy: try the team-specific endpoint first (faster, smaller payload).
+    // If it throws OR returns an empty array, fall back to the full event
+    // endpoint and filter client-side.  TBA legitimately returns [] from the
+    // team endpoint when matches haven't been assigned yet, so an empty array
+    // is treated the same as a failure here.
     let resolvedMatches = []
 
+    let teamEndpointOk = false
     try {
       const teamMatches = await fetchTeamMatches(teamNumber, eventCode, tbaKey)
-      if (Array.isArray(teamMatches)) resolvedMatches = teamMatches
-    } catch (err) {
-      // --- Step 2: fall back to event-wide endpoint and filter by team ---
+      if (Array.isArray(teamMatches) && teamMatches.length > 0) {
+        resolvedMatches  = teamMatches
+        teamEndpointOk   = true
+      }
+    } catch (_e) {
+      // swallow — will fall through to the event-wide fetch below
+    }
+
+    if (!teamEndpointOk) {
       try {
         const allMatches = await fetchEventMatches(eventCode, tbaKey)
         if (!Array.isArray(allMatches)) {
