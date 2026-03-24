@@ -20,7 +20,7 @@
 //   - Decide whether to render normal pit view or field/view-only view
 // =============================================================================
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react'
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 
 // --- Components ---
 import Header        from './components/Header'
@@ -149,6 +149,21 @@ export default function App() {
 
   // Persist match number to localStorage whenever it changes
   useEffect(() => { saveMatchNumber(matchNumber) }, [matchNumber])
+
+  // ---------------------------------------------------------------------------
+  // EFFECT — Auto-reset cycles when Match Day advances
+  // Every time the user increments Match Day (taps ›), cycle counts and
+  // readings are wiped so stats start clean for the new day.
+  // Decrementing (taps ‹) does NOT reset — prevents accidental data loss.
+  // useRef tracks the previous value without causing an extra render.
+  // ---------------------------------------------------------------------------
+  const prevMatchNumber = useRef(matchNumber)
+  useEffect(() => {
+    if (matchNumber > prevMatchNumber.current) {
+      resetStats()
+    }
+    prevMatchNumber.current = matchNumber
+  }, [matchNumber]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Reset sync status to 'local' when syncCode is cleared
   useEffect(() => {
