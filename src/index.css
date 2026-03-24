@@ -1518,3 +1518,136 @@ input:focus, textarea:focus {
   padding-top: 8px;
   border-top: 1px solid var(--border);
 }
+
+/* ── Schedule tabs ─────────────────────────────────────────── */
+.schedule-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  flex-shrink: 0;
+}
+
+.schedule-tab {
+  flex: 1;
+  padding: 10px 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  border-bottom: 2px solid transparent;
+  transition: color 0.15s, border-color 0.15s;
+  letter-spacing: 0.3px;
+}
+
+.schedule-tab.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+/* ── Prediction match card extras ──────────────────────────── */
+.pred-match {
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pred-score {
+  font-style: italic;
+  opacity: 0.85;
+}
+
+/* Win probability bar */
+.win-prob-bar-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.win-prob-bar {
+  flex: 1;
+  height: 8px;
+  border-radius: 4px;
+  overflow: hidden;
+  display: flex;
+  background: var(--surface2);
+}
+
+.win-prob-red {
+  background: #ef4444;
+  height: 100%;
+  transition: width 0.4s ease;
+}
+
+.win-prob-blue {
+  background: #3b82f6;
+  height: 100%;
+  transition: width 0.4s ease;
+}
+
+.win-prob-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  min-width: 30px;
+}
+
+.win-prob-label.red-label  { text-align: right; color: #fca5a5; }
+.win-prob-label.blue-label { text-align: left;  color: #93c5fd; }
+.win-prob-label.our-label  { color: #fff; }
+
+/* Our win chance badge */
+.schedule-win-chance {
+  align-self: flex-end;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 10px;
+  margin-top: 2px;
+}
+
+.schedule-win-chance.fav {
+  background: #14532d;
+  color: #86efac;
+}
+
+.schedule-win-chance.dog {
+  background: #450a0a;
+  color: #fca5a5;
+}
+
+.schedule-no-pred {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-style: italic;
+  margin-top: 2px;
+}
+
+/* Watched / favorited team highlight */
+.watched-team {
+  border-color: #f59e0b !important;
+  color: #fcd34d !important;
+  background: rgba(245, 158, 11, 0.12) !important;
+}
+
+/* Section divider label inside schedule list */
+.schedule-section-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  padding: 10px 12px 4px;
+}
+
+/* Event result stat badge */
+.event-result-stat .schedule-stat-value {
+  font-weight: 700;
+}
+.event-result-stat.result-winner .schedule-stat-value {
+  color: #fbbf24;
+}
+.event-result-stat.result-finalist .schedule-stat-value {
+  color: #e2e8f0;
+}
+.event-result-stat.result-elim .schedule-stat-value {
+  color: var(--text-muted);
+}

@@ -60,6 +60,7 @@ const DEFAULT_SETTINGS = {
   viewOnly:        false, // if true, hides all action buttons (field phone mode)
   tbaKey:          '',    // The Blue Alliance API key (free at thebluealliance.com/account)
   eventCode:       '',    // TBA event code e.g. "2024casj" (find at thebluealliance.com/events)
+  watchedTeams:    '',    // Comma-separated team numbers to highlight (e.g. "1678,2910")
 }
 
 // =============================================================================

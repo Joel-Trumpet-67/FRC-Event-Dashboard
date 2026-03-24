@@ -34,3 +34,27 @@ export async function fetchTeamEventStats(teamNumber, eventCode) {
   if (!res.ok) throw new Error(`Statbotics ${res.status}: ${res.statusText}`)
   return res.json()
 }
+
+// -----------------------------------------------------------------------------
+// fetchEventMatchPredictions — returns all matches at an event with predictions.
+//
+// Key fields per match:
+//   key                              — TBA match key e.g. "2024casj_qm1"
+//   comp_level, set_number, match_number
+//   pred.red_win_prob                — 0–1 probability red wins
+//   pred.red_score / pred.blue_score — predicted scores
+//   result.red_score / result.blue_score — actual scores (null if unplayed)
+//   alliances.red.team_keys / alliances.blue.team_keys
+//
+// Returns null-safe — wrap in try/catch; may 404 for future/unknown events.
+//
+// @param {string} eventCode — e.g. "2024casj"
+// @returns {Array}
+// -----------------------------------------------------------------------------
+export async function fetchEventMatchPredictions(eventCode) {
+  const res = await fetch(
+    `${STATBOTICS_BASE}/matches?event=${eventCode}&limit=200&offset=0`
+  )
+  if (!res.ok) throw new Error(`Statbotics ${res.status}: ${res.statusText}`)
+  return res.json()
+}

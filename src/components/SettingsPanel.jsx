@@ -140,6 +140,22 @@ export default function SettingsPanel({ settings, onSave, onResetAll, onResetSta
             </div>
           </div>
 
+          <div className="setting-group">
+            <label className="setting-label">Watched Teams</label>
+            <input
+              className="setting-input"
+              type="text"
+              placeholder="e.g. 1678, 2910, 3015"
+              value={form.watchedTeams || ''}
+              onChange={e => handleChange('watchedTeams', e.target.value)}
+              maxLength={200}
+            />
+            <div className="setting-hint">
+              Comma-separated team numbers to highlight in the schedule —
+              great for tracking potential alliance partners.
+            </div>
+          </div>
+
           {/* ── Thresholds ───────────────────────────────────────── */}
           <div className="setting-divider">⏱ Thresholds</div>
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { fetchTeamMatches, fetchEventMatches, fetchEventInfo } from '../utils/tbaApi'
-import { fetchTeamEventStats }             from '../utils/statboticsApi'
+import { fetchTeamEventStats, fetchEventMatchPredictions } from '../utils/statboticsApi'
 import { loadScheduleCache, saveScheduleCache } from '../utils/storage'
 
 // How long to use cached data before re-fetching (5 minutes)
@@ -55,6 +55,15 @@ function matchTime(match) {
   return match.predicted_time ?? match.time ?? 0
 }
 
+// CSS class for event result badge
+function eventResultClass(result) {
+  if (!result) return ''
+  const r = result.toLowerCase()
+  if (r.includes('winner') || r.includes('won'))     return 'result-winner'
+  if (r.includes('finalist'))                         return 'result-finalist'
+  return 'result-elim'
+}
+
 // Sort order across competition levels: quals → EF → QF → SF → Finals
 const LEVEL_ORDER = { qm: 0, ef: 1, qf: 2, sf: 3, f: 4 }
 function sortMatches(a, b) {
@@ -72,7 +81,7 @@ function sortMatches(a, b) {
 /**
  * Full match schedule for the team's event, pulled from:
  *   - The Blue Alliance (match times, alliances, scores)
- *   - Statbotics (EPA, rank, record)
+ *   - Statbotics (EPA, rank, record, win probability predictions)
  *
  * Data is cached in localStorage for 5 minutes so re-opening the panel
  * is instant. Hit the refresh button to force a new fetch.
@@ -80,11 +89,15 @@ function sortMatches(a, b) {
  * Requires in settings: teamNumber, tbaKey, eventCode
  */
 export default function SchedulePanel({ settings, onClose }) {
-  const [matches,   setMatches]   = useState(null)
-  const [stats,     setStats]     = useState(null)
-  const [eventInfo, setEventInfo] = useState(null)
-  const [loading,   setLoading]   = useState(true)
-  const [error,     setError]     = useState(null)
+  const [matches,     setMatches]     = useState(null)
+  const [stats,       setStats]       = useState(null)
+  const [predictions, setPredictions] = useState(null)
+  const [eventInfo,   setEventInfo]   = useState(null)
+  const [loading,     setLoading]     = useState(true)
+  const [error,       setError]       = useState(null)
+
+  // Active tab: 'schedule' | 'predictions'
+  const [activeTab, setActiveTab] = useState('schedule')
 
   // 1-second tick for the live countdown to next match
   const [now, setNow] = useState(Date.now())
@@ -118,6 +131,7 @@ export default function SchedulePanel({ settings, onClose }) {
       ) {
         setMatches(cached.matches)
         setStats(cached.stats)
+        setPredictions(cached.predictions ?? null)
         setEventInfo(cached.eventInfo)
         setLoading(false)
         return
@@ -127,13 +141,14 @@ export default function SchedulePanel({ settings, onClose }) {
     setLoading(true)
     setError(null)
 
-    // Fetch event info + Statbotics in parallel — failures won't block the schedule
-    const [eventResult, statsResult] = await Promise.allSettled([
+    // Fetch event info, Statbotics team stats, and predictions in parallel
+    const [eventResult, statsResult, predsResult] = await Promise.allSettled([
       fetchEventInfo(eventCode, tbaKey),
       fetchTeamEventStats(teamNumber, eventCode),
+      fetchEventMatchPredictions(eventCode),
     ])
 
-    // --- Step 1: try the team-specific endpoint ---
+    // --- Step 1: try the team-specific TBA endpoint ---
     let resolvedMatches = []
 
     try {
@@ -160,21 +175,25 @@ export default function SchedulePanel({ settings, onClose }) {
         return
       }
     }
-    const resolvedEventInfo = eventResult.status  === 'fulfilled' ? eventResult.value  : null
-    const resolvedStats     = statsResult.status  === 'fulfilled' ? statsResult.value  : null
+
+    const resolvedEventInfo  = eventResult.status  === 'fulfilled' ? eventResult.value  : null
+    const resolvedStats      = statsResult.status  === 'fulfilled' ? statsResult.value  : null
+    const resolvedPredictions = predsResult.status === 'fulfilled' ? predsResult.value  : null
 
     setMatches(resolvedMatches)
     setEventInfo(resolvedEventInfo)
     setStats(resolvedStats)
+    setPredictions(resolvedPredictions)
     setLoading(false)
 
     saveScheduleCache({
-      matches:   resolvedMatches,
-      eventInfo: resolvedEventInfo,
-      stats:     resolvedStats,
+      matches:     resolvedMatches,
+      eventInfo:   resolvedEventInfo,
+      stats:       resolvedStats,
+      predictions: resolvedPredictions,
       eventCode,
       teamNumber,
-      fetchedAt: Date.now(),
+      fetchedAt:   Date.now(),
     })
   }
 
@@ -199,6 +218,32 @@ export default function SchedulePanel({ settings, onClose }) {
   const qualLosses = stats?.record?.qual?.losses ?? stats?.record?.losses ?? null
   const qualTies   = stats?.record?.qual?.ties   ?? stats?.record?.ties   ?? null
   const hasRecord  = qualWins !== null
+
+  // Event finish result from Statbotics (e.g. "Winner", "Finalist", "Quarterfinalist")
+  const eventResult = stats?.result ?? null
+
+  // Elim record if available
+  const elimWins   = stats?.record?.elim?.wins   ?? null
+  const elimLosses = stats?.record?.elim?.losses ?? null
+  const hasElim    = elimWins !== null && elimLosses !== null
+
+  // Watched teams — parsed from settings (comma-separated team numbers)
+  const watchedTeamKeys = (settings.watchedTeams || '')
+    .split(',')
+    .map(t => `frc${t.trim()}`)
+    .filter(t => t !== 'frc' && t !== `frc${settings.teamNumber}`)
+
+  // Build a predictions lookup keyed by TBA match key
+  // Statbotics match key format matches TBA (e.g. "2024casj_qm1")
+  const predByKey = {}
+  if (Array.isArray(predictions)) {
+    for (const p of predictions) {
+      if (p.key) predByKey[p.key] = p
+    }
+  }
+
+  // Upcoming matches that our team is in (for Predictions tab)
+  const upcomingTeamMatches = sortedMatches.filter(m => !isPlayed(m))
 
   // ==========================================================================
   // Render
@@ -226,6 +271,22 @@ export default function SchedulePanel({ settings, onClose }) {
           </div>
         </div>
 
+        {/* ── Tab Bar ── */}
+        <div className="schedule-tabs">
+          <button
+            className={`schedule-tab ${activeTab === 'schedule' ? 'active' : ''}`}
+            onClick={() => setActiveTab('schedule')}
+          >
+            Schedule
+          </button>
+          <button
+            className={`schedule-tab ${activeTab === 'predictions' ? 'active' : ''}`}
+            onClick={() => setActiveTab('predictions')}
+          >
+            Predictions
+          </button>
+        </div>
+
         <div className="modal-body">
 
           {/* ── Loading ── */}
@@ -249,7 +310,7 @@ export default function SchedulePanel({ settings, onClose }) {
           {/* ── Content ── */}
           {!loading && !error && matches && (
             <>
-              {/* Statbotics stats bar */}
+              {/* Statbotics stats bar (shown on both tabs) */}
               {stats && (
                 <div className="schedule-stats">
                   {rankNum !== null && (
@@ -268,108 +329,175 @@ export default function SchedulePanel({ settings, onClose }) {
                   )}
                   {hasRecord && (
                     <div className="schedule-stat">
-                      <span className="schedule-stat-label">Record</span>
+                      <span className="schedule-stat-label">Qual</span>
                       <span className="schedule-stat-value">
                         {qualWins}-{qualLosses}{qualTies > 0 ? `-${qualTies}` : ''}
                       </span>
                     </div>
                   )}
+                  {hasElim && (
+                    <div className="schedule-stat">
+                      <span className="schedule-stat-label">Elim</span>
+                      <span className="schedule-stat-value">{elimWins}-{elimLosses}</span>
+                    </div>
+                  )}
+                  {eventResult && (
+                    <div className={`schedule-stat event-result-stat ${eventResultClass(eventResult)}`}>
+                      <span className="schedule-stat-label">Result</span>
+                      <span className="schedule-stat-value">{eventResult}</span>
+                    </div>
+                  )}
                 </div>
               )}
 
-              {/* Next match countdown */}
-              {nextMatch && countdownMs !== null && (
-                <div className={`schedule-countdown ${countdownMs <= 0 ? 'urgent' : ''}`}>
-                  <span className="schedule-countdown-label">
-                    {countdownMs <= 0 ? '⚡ MATCH IS ON' : '⏱ NEXT MATCH IN'}
-                  </span>
-                  <span className="schedule-countdown-time">
-                    {formatCountdown(countdownMs)}
-                  </span>
-                  <span className="schedule-countdown-name">
-                    {matchName(nextMatch)} · {formatTime(matchTime(nextMatch))}
-                  </span>
-                </div>
-              )}
+              {/* ── SCHEDULE TAB ── */}
+              {activeTab === 'schedule' && (
+                <>
+                  {/* Next match countdown */}
+                  {nextMatch && countdownMs !== null && (
+                    <div className={`schedule-countdown ${countdownMs <= 0 ? 'urgent' : ''}`}>
+                      <span className="schedule-countdown-label">
+                        {countdownMs <= 0 ? '⚡ MATCH IS ON' : '⏱ NEXT MATCH IN'}
+                      </span>
+                      <span className="schedule-countdown-time">
+                        {formatCountdown(countdownMs)}
+                      </span>
+                      <span className="schedule-countdown-name">
+                        {matchName(nextMatch)} · {formatTime(matchTime(nextMatch))}
+                      </span>
+                    </div>
+                  )}
 
-              {!nextMatch && sortedMatches.length > 0 && (
-                <div className="schedule-done">✅ All matches complete</div>
-              )}
+                  {!nextMatch && sortedMatches.length > 0 && (
+                    <div className="schedule-done">✅ All matches complete</div>
+                  )}
 
-              {/* Match list */}
-              {sortedMatches.length === 0 ? (
-                <div className="schedule-empty">
-                  No matches found at <strong>{settings.eventCode}</strong>.<br/>
-                  <span style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 6, display: 'block' }}>
-                    The event may not have matches posted yet.<br/>
-                    Event codes are lowercase — e.g. <strong>2024casj</strong><br/>
-                    Find yours at thebluealliance.com/events
-                  </span>
-                </div>
-              ) : (
-                <div className="schedule-list">
-                  {sortedMatches.map(match => {
-                    const played   = isPlayed(match)
-                    const isNext   = nextMatch?.key === match.key
-                    const redKeys  = match.alliances?.red?.blue_keys  ?? match.alliances?.red?.team_keys  ?? []
-                    const blueKeys = match.alliances?.blue?.team_keys ?? []
-                    // Fix: always use team_keys
-                    const redTeams  = match.alliances?.red?.team_keys  ?? []
-                    const blueTeams = match.alliances?.blue?.team_keys ?? []
-                    const onRed   = redTeams.includes(teamKey)
-                    const onBlue  = blueTeams.includes(teamKey)
-                    const redScore  = match.alliances?.red?.score  ?? -1
-                    const blueScore = match.alliances?.blue?.score ?? -1
-                    const weWon = (onRed && redScore > blueScore) || (onBlue && blueScore > redScore)
+                  {/* Match list */}
+                  {sortedMatches.length === 0 ? (
+                    <div className="schedule-empty">
+                      No matches found at <strong>{settings.eventCode}</strong>.<br/>
+                      <span style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 6, display: 'block' }}>
+                        The event may not have matches posted yet.<br/>
+                        Event codes are lowercase — e.g. <strong>2024casj</strong><br/>
+                        Find yours at thebluealliance.com/events
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="schedule-list">
+                      {sortedMatches.map(match => {
+                        const played   = isPlayed(match)
+                        const isNext   = nextMatch?.key === match.key
+                        const redTeams  = match.alliances?.red?.team_keys  ?? []
+                        const blueTeams = match.alliances?.blue?.team_keys ?? []
+                        const onRed   = redTeams.includes(teamKey)
+                        const onBlue  = blueTeams.includes(teamKey)
+                        const redScore  = match.alliances?.red?.score  ?? -1
+                        const blueScore = match.alliances?.blue?.score ?? -1
+                        const weWon = (onRed && redScore > blueScore) || (onBlue && blueScore > redScore)
 
-                    return (
-                      <div
-                        key={match.key}
-                        className={[
-                          'schedule-match',
-                          played  ? 'played'  : '',
-                          isNext  ? 'next'    : '',
-                          onRed   ? 'on-red'  : '',
-                          onBlue  ? 'on-blue' : '',
-                        ].filter(Boolean).join(' ')}
-                      >
-                        {/* Match name + time */}
-                        <div className="schedule-match-info">
-                          <span className="schedule-match-name">
-                            {isNext ? '▶ ' : played ? '✓ ' : '  '}
-                            {matchName(match)}
-                          </span>
-                          <span className="schedule-match-time">
-                            {formatTime(matchTime(match))}
-                          </span>
-                        </div>
+                        return (
+                          <div
+                            key={match.key}
+                            className={[
+                              'schedule-match',
+                              played  ? 'played'  : '',
+                              isNext  ? 'next'    : '',
+                              onRed   ? 'on-red'  : '',
+                              onBlue  ? 'on-blue' : '',
+                            ].filter(Boolean).join(' ')}
+                          >
+                            {/* Match name + time */}
+                            <div className="schedule-match-info">
+                              <span className="schedule-match-name">
+                                {isNext ? '▶ ' : played ? '✓ ' : '  '}
+                                {matchName(match)}
+                              </span>
+                              <span className="schedule-match-time">
+                                {formatTime(matchTime(match))}
+                              </span>
+                            </div>
 
-                        {/* Alliances */}
-                        <div className="schedule-alliances">
-                          <Alliance
-                            teams={redTeams}
-                            color="red"
-                            ourTeam={teamKey}
-                            score={played ? redScore : null}
-                          />
-                          <Alliance
-                            teams={blueTeams}
-                            color="blue"
-                            ourTeam={teamKey}
-                            score={played ? blueScore : null}
-                          />
-                        </div>
+                            {/* Alliances */}
+                            <div className="schedule-alliances">
+                              <Alliance
+                                teams={redTeams}
+                                color="red"
+                                ourTeam={teamKey}
+                                watchedTeams={watchedTeamKeys}
+                                score={played ? redScore : null}
+                              />
+                              <Alliance
+                                teams={blueTeams}
+                                color="blue"
+                                ourTeam={teamKey}
+                                watchedTeams={watchedTeamKeys}
+                                score={played ? blueScore : null}
+                              />
+                            </div>
 
-                        {/* Win/loss badge for played matches */}
-                        {played && (onRed || onBlue) && (
-                          <div className={`schedule-result ${weWon ? 'win' : 'loss'}`}>
-                            {weWon ? 'W' : 'L'}
+                            {/* Win/loss badge for played matches */}
+                            {played && (onRed || onBlue) && (
+                              <div className={`schedule-result ${weWon ? 'win' : 'loss'}`}>
+                                {weWon ? 'W' : 'L'}
+                              </div>
+                            )}
                           </div>
-                        )}
-                      </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* ── PREDICTIONS TAB ── */}
+              {activeTab === 'predictions' && (
+                <>
+                  {upcomingTeamMatches.length === 0 ? (
+                    <div className="schedule-done">✅ No upcoming matches to predict</div>
+                  ) : (
+                    <div className="schedule-list">
+                      {upcomingTeamMatches.map(match => (
+                        <PredMatchCard
+                          key={match.key}
+                          match={match}
+                          pred={predByKey[match.key]}
+                          teamKey={teamKey}
+                          watchedTeamKeys={watchedTeamKeys}
+                        />
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Watched teams' upcoming matches */}
+                  {watchedTeamKeys.length > 0 && (() => {
+                    const watchedUpcoming = sortedMatches.filter(m => {
+                      if (isPlayed(m)) return false
+                      const all = [
+                        ...(m.alliances?.red?.team_keys  ?? []),
+                        ...(m.alliances?.blue?.team_keys ?? []),
+                      ]
+                      return watchedTeamKeys.some(k => all.includes(k)) &&
+                             !all.includes(teamKey)
+                    })
+                    if (watchedUpcoming.length === 0) return null
+                    return (
+                      <>
+                        <div className="schedule-section-label">⭐ Watched Teams</div>
+                        <div className="schedule-list">
+                          {watchedUpcoming.map(match => (
+                            <PredMatchCard
+                              key={match.key}
+                              match={match}
+                              pred={predByKey[match.key]}
+                              teamKey={teamKey}
+                              watchedTeamKeys={watchedTeamKeys}
+                            />
+                          ))}
+                        </div>
+                      </>
                     )
-                  })}
-                </div>
+                  })()}
+                </>
               )}
 
               <div className="schedule-footer">
@@ -387,22 +515,130 @@ export default function SchedulePanel({ settings, onClose }) {
 // =============================================================================
 // Alliance — renders one alliance row (3 teams + optional score)
 // =============================================================================
-function Alliance({ teams, color, ourTeam, score }) {
+function Alliance({ teams, color, ourTeam, watchedTeams = [], score, scoreLabel }) {
   return (
     <div className={`schedule-alliance schedule-alliance-${color}`}>
       <div className="schedule-alliance-teams">
         {teams.map(key => (
           <span
             key={key}
-            className={`schedule-team ${key === ourTeam ? 'our-team' : ''}`}
+            className={[
+              'schedule-team',
+              key === ourTeam                ? 'our-team'     : '',
+              watchedTeams.includes(key)     ? 'watched-team' : '',
+            ].filter(Boolean).join(' ')}
           >
+            {watchedTeams.includes(key) && key !== ourTeam ? '⭐' : ''}
             {key.replace('frc', '')}
           </span>
         ))}
       </div>
       {score !== null && score >= 0 && (
-        <span className="schedule-alliance-score">{score}</span>
+        <span className={`schedule-alliance-score ${scoreLabel === 'pred' ? 'pred-score' : ''}`}>
+          {score}
+        </span>
       )}
+    </div>
+  )
+}
+
+// =============================================================================
+// PredMatchCard — one match card for the Predictions tab
+// =============================================================================
+function PredMatchCard({ match, pred, teamKey, watchedTeamKeys }) {
+  const redTeams  = match.alliances?.red?.team_keys  ?? []
+  const blueTeams = match.alliances?.blue?.team_keys ?? []
+  const onRed     = redTeams.includes(teamKey)
+  const onBlue    = blueTeams.includes(teamKey)
+
+  const redWinProb    = pred?.pred?.red_win_prob  ?? pred?.red_win_prob  ?? null
+  const blueWinProb   = redWinProb !== null ? 1 - redWinProb : null
+  const predRedScore  = pred?.pred?.red_score     ?? pred?.red_score     ?? null
+  const predBlueScore = pred?.pred?.blue_score    ?? pred?.blue_score    ?? null
+
+  const ourWinProb = onRed ? redWinProb : onBlue ? blueWinProb : null
+  const favored    = ourWinProb !== null
+    ? ourWinProb >= 0.5 ? 'fav' : 'dog'
+    : null
+
+  return (
+    <div
+      className={[
+        'schedule-match',
+        'pred-match',
+        onRed  ? 'on-red'  : '',
+        onBlue ? 'on-blue' : '',
+      ].filter(Boolean).join(' ')}
+    >
+      <div className="schedule-match-info">
+        <span className="schedule-match-name">{matchName(match)}</span>
+        <span className="schedule-match-time">{formatTime(matchTime(match))}</span>
+      </div>
+
+      <div className="schedule-alliances">
+        <Alliance
+          teams={redTeams}
+          color="red"
+          ourTeam={teamKey}
+          watchedTeams={watchedTeamKeys}
+          score={predRedScore !== null ? Math.round(predRedScore) : null}
+          scoreLabel="pred"
+        />
+        <Alliance
+          teams={blueTeams}
+          color="blue"
+          ourTeam={teamKey}
+          watchedTeams={watchedTeamKeys}
+          score={predBlueScore !== null ? Math.round(predBlueScore) : null}
+          scoreLabel="pred"
+        />
+      </div>
+
+      {redWinProb !== null && (
+        <WinProbBar
+          redProb={redWinProb}
+          ourAlliance={onRed ? 'red' : onBlue ? 'blue' : null}
+        />
+      )}
+
+      {ourWinProb !== null && (
+        <div className={`schedule-win-chance ${favored}`}>
+          {Math.round(ourWinProb * 100)}% win
+        </div>
+      )}
+
+      {pred === undefined && (
+        <div className="schedule-no-pred">No prediction available</div>
+      )}
+    </div>
+  )
+}
+
+// =============================================================================
+// WinProbBar — horizontal probability bar (red | blue split)
+// =============================================================================
+function WinProbBar({ redProb, ourAlliance }) {
+  const redPct  = Math.round(redProb  * 100)
+  const bluePct = 100 - redPct
+
+  return (
+    <div className="win-prob-bar-wrap">
+      <span className={`win-prob-label red-label ${ourAlliance === 'red' ? 'our-label' : ''}`}>
+        {redPct}%
+      </span>
+      <div className="win-prob-bar">
+        <div
+          className="win-prob-red"
+          style={{ width: `${redPct}%` }}
+        />
+        <div
+          className="win-prob-blue"
+          style={{ width: `${bluePct}%` }}
+        />
+      </div>
+      <span className={`win-prob-label blue-label ${ourAlliance === 'blue' ? 'our-label' : ''}`}>
+        {bluePct}%
+      </span>
     </div>
   )
 }
