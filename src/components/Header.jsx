@@ -8,7 +8,7 @@ import React from 'react'
  *   'local' — No sync code set, localStorage only (grey dot)
  *   'error' — Firebase configured but disconnected (red dot)
  */
-export default function Header({ teamNumber, matchNumber, onMatchChange, onSettingsOpen, syncStatus }) {
+export default function Header({ teamNumber, matchNumber, onMatchChange, onSettingsOpen, onScheduleOpen, syncStatus }) {
   function decrement() {
     if (matchNumber > 1) onMatchChange(matchNumber - 1)
   }
@@ -52,6 +52,7 @@ export default function Header({ teamNumber, matchNumber, onMatchChange, onSetti
           />
           <span className="sync-label">{syncDot.label}</span>
         </div>
+        <button className="icon-btn" onClick={onScheduleOpen} aria-label="Match Schedule">📅</button>
         <button className="icon-btn" onClick={onSettingsOpen} aria-label="Settings">⚙</button>
       </div>
     </header>

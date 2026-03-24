@@ -1,9 +1,10 @@
 // Keys for localStorage
 const KEYS = {
-  BATTERIES: 'frc_batteries',
-  SETTINGS: 'frc_settings',
-  MATCH_NUMBER: 'frc_match_number',
-  MATCH_LOG: 'frc_match_log',
+  BATTERIES:      'frc_batteries',
+  SETTINGS:       'frc_settings',
+  MATCH_NUMBER:   'frc_match_number',
+  MATCH_LOG:      'frc_match_log',
+  SCHEDULE_CACHE: 'frc_schedule_cache', // TBA + Statbotics data cache
 }
 
 export function loadBatteries() {
@@ -51,6 +52,23 @@ export function loadMatchLog() {
 
 export function saveMatchLog(log) {
   localStorage.setItem(KEYS.MATCH_LOG, JSON.stringify(log))
+}
+
+// -----------------------------------------------------------------------------
+// Schedule cache — stores TBA + Statbotics response data with a timestamp.
+// Includes eventCode + teamNumber so stale cache for a different event is ignored.
+// -----------------------------------------------------------------------------
+export function loadScheduleCache() {
+  try {
+    const raw = localStorage.getItem(KEYS.SCHEDULE_CACHE)
+    return raw ? JSON.parse(raw) : null
+  } catch {
+    return null
+  }
+}
+
+export function saveScheduleCache(data) {
+  localStorage.setItem(KEYS.SCHEDULE_CACHE, JSON.stringify(data))
 }
 
 export function clearAll() {

@@ -27,8 +27,9 @@ import Header        from './components/Header'
 import StatusBanner  from './components/StatusBanner'
 import BatteryGrid   from './components/BatteryGrid'
 import BatteryModal  from './components/BatteryModal'
-import SettingsPanel from './components/SettingsPanel'
-import FieldView     from './components/FieldView'
+import SettingsPanel  from './components/SettingsPanel'
+import SchedulePanel  from './components/SchedulePanel'
+import FieldView      from './components/FieldView'
 
 // --- Hooks ---
 import { useBatteries } from './hooks/useBatteries'
@@ -57,6 +58,8 @@ const DEFAULT_SETTINGS = {
   coolThreshold:   15,    // minutes a battery should cool before re-charging
   syncCode:        '',    // shared Firebase room key — empty = local-only mode
   viewOnly:        false, // if true, hides all action buttons (field phone mode)
+  tbaKey:          '',    // The Blue Alliance API key (free at thebluealliance.com/account)
+  eventCode:       '',    // TBA event code e.g. "2024casj" (find at thebluealliance.com/events)
 }
 
 // =============================================================================
@@ -130,6 +133,8 @@ export default function App() {
     setSelectedBattery,
     showSettings,
     setShowSettings,
+    showSchedule,
+    setShowSchedule,
     closeModal,
   } = useModals()
 
@@ -246,6 +251,7 @@ export default function App() {
         matchNumber={matchNumber}
         onMatchChange={setMatchNumber}
         onSettingsOpen={() => setShowSettings(true)}
+        onScheduleOpen={() => setShowSchedule(true)}
         syncStatus={syncStatus}
       />
 
@@ -308,6 +314,14 @@ export default function App() {
           onResetAll={handleResetAll}
           onResetStats={handleResetStats}
           onClose={() => setShowSettings(false)}
+        />
+      )}
+
+      {/* Schedule panel — TBA match schedule + Statbotics stats */}
+      {showSchedule && (
+        <SchedulePanel
+          settings={settings}
+          onClose={() => setShowSchedule(false)}
         />
       )}
 

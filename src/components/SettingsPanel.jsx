@@ -109,6 +109,37 @@ export default function SettingsPanel({ settings, onSave, onResetAll, onResetSta
             </div>
           </div>
 
+          {/* ── Match Schedule ───────────────────────────────────── */}
+          <div className="setting-divider">📅 Match Schedule</div>
+
+          <div className="setting-group">
+            <label className="setting-label">TBA API Key</label>
+            <input
+              className="setting-input"
+              type="text"
+              placeholder="Get a free key at thebluealliance.com/account"
+              value={form.tbaKey || ''}
+              onChange={e => handleChange('tbaKey', e.target.value)}
+              maxLength={64}
+            />
+          </div>
+
+          <div className="setting-group">
+            <label className="setting-label">Event Code</label>
+            <input
+              className="setting-input"
+              type="text"
+              placeholder="e.g. 2024casj"
+              value={form.eventCode || ''}
+              onChange={e => handleChange('eventCode', e.target.value.trim().toLowerCase())}
+              maxLength={16}
+            />
+            <div className="setting-hint">
+              Find yours at thebluealliance.com/events —
+              test with event <strong>2024casj</strong> (team 254).
+            </div>
+          </div>
+
           {/* ── Thresholds ───────────────────────────────────────── */}
           <div className="setting-divider">⏱ Thresholds</div>
 

@@ -28,7 +28,8 @@ export function useModals() {
   // can render immediately, then stay in sync via batteries.find() in App.jsx.
   // ---------------------------------------------------------------------------
   const [selectedBattery, setSelectedBattery] = useState(null)
-  const [showSettings, setShowSettings]       = useState(false)
+  const [showSettings,    setShowSettings]    = useState(false)
+  const [showSchedule,    setShowSchedule]    = useState(false)
 
   // ---------------------------------------------------------------------------
   // EFFECT — Push browser history entry when a modal opens
@@ -36,10 +37,10 @@ export function useModals() {
   // the modal instead of navigating away from the app entirely.
   // ---------------------------------------------------------------------------
   useEffect(() => {
-    if (selectedBattery || showSettings) {
+    if (selectedBattery || showSettings || showSchedule) {
       window.history.pushState({ modal: true }, '')
     }
-  }, [selectedBattery, showSettings])
+  }, [selectedBattery, showSettings, showSchedule])
 
   // ---------------------------------------------------------------------------
   // EFFECT — Handle browser back button
@@ -50,10 +51,11 @@ export function useModals() {
     function handlePopState() {
       if (selectedBattery) { setSelectedBattery(null); return }
       if (showSettings)    { setShowSettings(false);   return }
+      if (showSchedule)    { setShowSchedule(false);   return }
     }
     window.addEventListener('popstate', handlePopState)
     return () => window.removeEventListener('popstate', handlePopState)
-  }, [selectedBattery, showSettings])
+  }, [selectedBattery, showSettings, showSchedule])
 
   // ---------------------------------------------------------------------------
   // closeModal — convenience function to close the battery detail modal
@@ -67,6 +69,8 @@ export function useModals() {
     setSelectedBattery,
     showSettings,
     setShowSettings,
+    showSchedule,
+    setShowSchedule,
     closeModal,
   }
 }
