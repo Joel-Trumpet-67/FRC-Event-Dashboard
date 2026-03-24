@@ -89,12 +89,13 @@ function sortMatches(a, b) {
  * Requires in settings: teamNumber, tbaKey, eventCode
  */
 export default function SchedulePanel({ settings, onClose }) {
-  const [matches,     setMatches]     = useState(null)
-  const [stats,       setStats]       = useState(null)
-  const [predictions, setPredictions] = useState(null)
-  const [eventInfo,   setEventInfo]   = useState(null)
-  const [loading,     setLoading]     = useState(true)
-  const [error,       setError]       = useState(null)
+  const [matches,          setMatches]          = useState(null)
+  const [stats,            setStats]            = useState(null)
+  const [predictions,      setPredictions]      = useState(null)
+  const [eventInfo,        setEventInfo]        = useState(null)
+  const [loading,          setLoading]          = useState(true)
+  const [error,            setError]            = useState(null)
+  const [fetchDebug,       setFetchDebug]       = useState(null) // {totalEventMatches, teamKey}
 
   // Active tab: 'schedule' | 'predictions'
   const [activeTab, setActiveTab] = useState('schedule')
@@ -159,27 +160,30 @@ export default function SchedulePanel({ settings, onClose }) {
     // is treated the same as a failure here.
     let resolvedMatches = []
 
+    const teamKey = `frc${teamNumber}`
+    let totalEventMatches = null
+
     let teamEndpointOk = false
     try {
       const teamMatches = await fetchTeamMatches(teamNumber, eventCode, tbaKey)
       if (Array.isArray(teamMatches) && teamMatches.length > 0) {
-        resolvedMatches  = teamMatches
-        teamEndpointOk   = true
+        resolvedMatches = teamMatches
+        teamEndpointOk  = true
       }
     } catch (_e) {
-      // swallow — will fall through to the event-wide fetch below
+      // swallow — fall through to event-wide fetch
     }
 
     if (!teamEndpointOk) {
       try {
         const allMatches = await fetchEventMatches(eventCode, tbaKey)
         if (!Array.isArray(allMatches)) {
-          throw new Error(`Unexpected TBA response: ${JSON.stringify(allMatches).slice(0, 120)}`)
+          throw new Error(`TBA returned: ${JSON.stringify(allMatches).slice(0, 200)}`)
         }
-        const key = `frc${teamNumber}`
+        totalEventMatches = allMatches.length
         resolvedMatches = allMatches.filter(m =>
-          m.alliances?.red?.team_keys?.includes(key) ||
-          m.alliances?.blue?.team_keys?.includes(key)
+          m.alliances?.red?.team_keys?.includes(teamKey) ||
+          m.alliances?.blue?.team_keys?.includes(teamKey)
         )
       } catch (fallbackErr) {
         setError(
@@ -190,6 +194,8 @@ export default function SchedulePanel({ settings, onClose }) {
         return
       }
     }
+
+    setFetchDebug({ totalEventMatches, teamKey })
 
     const resolvedEventInfo  = eventResult.status  === 'fulfilled' ? eventResult.value  : null
     const resolvedStats      = statsResult.status  === 'fulfilled' ? statsResult.value  : null
@@ -390,12 +396,28 @@ export default function SchedulePanel({ settings, onClose }) {
                   {/* Match list */}
                   {sortedMatches.length === 0 ? (
                     <div className="schedule-empty">
-                      No matches found at <strong>{settings.eventCode}</strong>.<br/>
-                      <span style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 6, display: 'block' }}>
-                        The event may not have matches posted yet.<br/>
-                        Event codes are lowercase — e.g. <strong>2024casj</strong><br/>
-                        Find yours at thebluealliance.com/events
-                      </span>
+                      {fetchDebug?.totalEventMatches > 0 ? (
+                        <>
+                          Team <strong>{fetchDebug.teamKey}</strong> not found at <strong>{settings.eventCode}</strong>.<br/>
+                          <span style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 6, display: 'block' }}>
+                            The event has <strong>{fetchDebug.totalEventMatches}</strong> matches but none include your team.<br/>
+                            Double-check your team number in Settings — it should match the team at this event.<br/>
+                            To test, set team to <strong>254</strong> with event <strong>2024casj</strong>.
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          No matches found at <strong>{settings.eventCode}</strong>.<br/>
+                          <span style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 6, display: 'block' }}>
+                            {fetchDebug?.totalEventMatches === 0
+                              ? 'The event exists but has no matches posted yet.'
+                              : 'The event may not exist or matches haven\'t been posted yet.'
+                            }<br/>
+                            Event codes are lowercase — e.g. <strong>2024casj</strong><br/>
+                            Find yours at thebluealliance.com/events
+                          </span>
+                        </>
+                      )}
                     </div>
                   ) : (
                     <div className="schedule-list">
