@@ -5,9 +5,10 @@ import { isFirebaseConfigured } from '../firebase'
  * Slide-up settings panel.
  * Covers: team number, sync code, view-only, charge/cool thresholds, battery count, reset.
  */
-export default function SettingsPanel({ settings, onSave, onResetAll, onClose }) {
+export default function SettingsPanel({ settings, onSave, onResetAll, onResetStats, onClose }) {
   const [form, setForm] = useState({ ...settings })
-  const [confirmReset, setConfirmReset] = useState(false)
+  const [confirmReset, setConfirmReset]      = useState(false)
+  const [confirmResetStats, setConfirmResetStats] = useState(false)
 
   function handleChange(key, value) {
     setForm(prev => ({ ...prev, [key]: value }))
@@ -27,9 +28,16 @@ export default function SettingsPanel({ settings, onSave, onResetAll, onClose })
   }
 
   function handleReset() {
-    if (!confirmReset) { setConfirmReset(true); return }
+    if (!confirmReset) { setConfirmReset(true); setConfirmResetStats(false); return }
     onResetAll(parseInt(form.batteryCount) || 6)
     setConfirmReset(false)
+    onClose()
+  }
+
+  function handleResetStats() {
+    if (!confirmResetStats) { setConfirmResetStats(true); setConfirmReset(false); return }
+    onResetStats()
+    setConfirmResetStats(false)
     onClose()
   }
 
@@ -149,6 +157,21 @@ export default function SettingsPanel({ settings, onSave, onResetAll, onClose })
 
           <div className="danger-zone">
             <div className="danger-title">Danger Zone</div>
+
+            {/* Reset cycles + readings only — keeps labels, notes, status */}
+            <button
+              className={`reset-btn ${confirmResetStats ? 'confirm' : ''}`}
+              onClick={handleResetStats}
+            >
+              {confirmResetStats ? '⚠ Confirm — clears cycles & readings!' : '🔄 Reset Cycles & Readings'}
+            </button>
+            {confirmResetStats && (
+              <button className="cancel-reset-btn" onClick={() => setConfirmResetStats(false)}>
+                Cancel
+              </button>
+            )}
+
+            {/* Reset all — full wipe, rebuilds from scratch */}
             <button
               className={`reset-btn ${confirmReset ? 'confirm' : ''}`}
               onClick={handleReset}

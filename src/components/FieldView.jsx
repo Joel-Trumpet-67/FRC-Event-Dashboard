@@ -8,7 +8,7 @@ import SettingsPanel from './SettingsPanel'
  * Shows only: USE NEXT battery, IN BOT battery, match number.
  * No tapping, no actions — read-only at a glance.
  */
-export default function FieldView({ batteries, matchNumber, chargeThresholdMin, teamNumber, syncStatus, settings, onSaveSettings, onResetAll, urlFieldMode }) {
+export default function FieldView({ batteries, matchNumber, chargeThresholdMin, teamNumber, syncStatus, settings, onSaveSettings, onResetAll, onResetStats, urlFieldMode }) {
   const [tick, setTick] = useState(0)
   const [showSettings, setShowSettings] = useState(false)
 
@@ -43,7 +43,7 @@ export default function FieldView({ batteries, matchNumber, chargeThresholdMin, 
       {/* Top bar */}
       <div className="field-topbar">
         <div className="field-match">
-          <span className="field-match-label">MATCH</span>
+          <span className="field-match-label">MATCH DAY</span>
           <span className="field-match-number">{matchNumber}</span>
         </div>
         {teamNumber && (
@@ -63,6 +63,7 @@ export default function FieldView({ batteries, matchNumber, chargeThresholdMin, 
           settings={settings}
           onSave={onSaveSettings}
           onResetAll={onResetAll}
+          onResetStats={onResetStats}
           onClose={() => setShowSettings(false)}
         />
       )}

@@ -36,12 +36,12 @@ export default function Header({ teamNumber, matchNumber, onMatchChange, onSetti
       </div>
 
       <div className="header-match">
-        <button className="match-btn" onClick={decrement} aria-label="Previous match">‹</button>
+        <button className="match-btn" onClick={decrement} aria-label="Previous match day">‹</button>
         <div className="match-display">
-          <span className="match-label">Match</span>
+          <span className="match-label">Match Day</span>
           <span className="match-number">{matchNumber}</span>
         </div>
-        <button className="match-btn" onClick={increment} aria-label="Next match">›</button>
+        <button className="match-btn" onClick={increment} aria-label="Next match day">›</button>
       </div>
 
       <div className="header-right">

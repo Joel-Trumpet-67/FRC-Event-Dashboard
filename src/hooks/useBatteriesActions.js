@@ -177,11 +177,26 @@ export function useBatteriesActions(setBatteries, batteryCount, buildDefault) {
 
   // ---------------------------------------------------------------------------
   // resetAll — wipes everything and rebuilds the array from scratch.
+  // Labels, notes, readings, history, status — all gone.
   // @param {number} newCount — defaults to current batteryCount from settings
   // ---------------------------------------------------------------------------
   const resetAll = useCallback((newCount = batteryCount) => {
     setBatteries(buildDefault(newCount))
   }, [setBatteries, batteryCount, buildDefault])
+
+  // ---------------------------------------------------------------------------
+  // resetStats — resets ONLY cycle counts and battery readings (voltage + IR).
+  // Keeps labels, notes, current status, timestamps, and history intact.
+  // Use this between events to start fresh stats without losing battery names.
+  // ---------------------------------------------------------------------------
+  const resetStats = useCallback(() => {
+    setBatteries(prev => prev.map(b => addHistory({
+      ...b,
+      cycleCount:         0,
+      voltage:            null,
+      internalResistance: null,
+    }, 'Stats reset', 'Cycles and readings cleared')))
+  }, [setBatteries])
 
   // ---------------------------------------------------------------------------
   // markStandby — moves a battery to STANDBY (charged but held in reserve).
@@ -213,6 +228,7 @@ export function useBatteriesActions(setBatteries, batteryCount, buildDefault) {
     updateReadings,
     updateMeta,
     resetAll,
+    resetStats,
     markStandby,
   }
 }

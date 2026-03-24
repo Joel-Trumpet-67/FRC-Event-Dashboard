@@ -117,6 +117,7 @@ export default function App() {
     updateReadings,
     updateMeta,
     resetAll,
+    resetStats,
     markStandby,
   } = useBatteries(settings.batteryCount, settings.syncCode, handleSyncStatus)
 
@@ -187,6 +188,9 @@ export default function App() {
   // Reset all battery data (called from SettingsPanel danger zone)
   function handleResetAll(count) { resetAll(count); closeModal() }
 
+  // Reset only cycle counts + readings — keeps labels, notes, status, history
+  function handleResetStats() { resetStats() }
+
   // Put battery in bot AND close the detail modal
   function handlePutInBot(id) { putInBot(id); closeModal() }
 
@@ -212,6 +216,7 @@ export default function App() {
         settings={settings}
         onSaveSettings={handleSaveSettings}
         onResetAll={handleResetAll}
+        onResetStats={handleResetStats}
         urlFieldMode={URL_FIELD_MODE}
       />
     )
@@ -286,6 +291,7 @@ export default function App() {
           settings={settings}
           onSave={handleSaveSettings}
           onResetAll={handleResetAll}
+          onResetStats={handleResetStats}
           onClose={() => setShowSettings(false)}
         />
       )}
