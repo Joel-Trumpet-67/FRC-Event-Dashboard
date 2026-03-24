@@ -24,8 +24,9 @@ const STATUS_ICON = {
 /**
  * Compact card showing one battery's status.
  * Tapping opens the detail modal.
+ * Wrapped in React.memo — only re-renders when this battery's data changes (PERF-8).
  */
-export default function BatteryCard({ battery, isBestNext, chargeThresholdMin, coolThresholdMin, onPress }) {
+const BatteryCard = React.memo(function BatteryCard({ battery, isBestNext, chargeThresholdMin, coolThresholdMin, onPress }) {
   const now = Date.now()
   const thresholdMs = chargeThresholdMin * 60 * 1000
   const coolMs = coolThresholdMin * 60 * 1000
@@ -126,6 +127,13 @@ export default function BatteryCard({ battery, isBestNext, chargeThresholdMin, c
 
       {/* Cycle count */}
       <div className="card-cycles">Cycles: {battery.cycleCount}</div>
+
+      {/* Spare badge */}
+      {battery.isSpare && (
+        <div className="spare-badge">★ SPARE</div>
+      )}
     </button>
   )
-}
+})
+
+export default BatteryCard

@@ -1,16 +1,13 @@
 // =============================================================================
 // useBatteriesSync.js
 //
-// EFFICIENCY TODOs:
-//   TODO [PERF-1]: Replace JSON.stringify comparison with a faster deep-equal
-//                  library (e.g. fast-deep-equal) — JSON.stringify is slow on
-//                  large arrays and runs on every Firebase snapshot.
+// EFFICIENCY NOTES:
+//   [PERF-1]: JSON.stringify comparison is used to detect Firebase echo — it is
+//             fast enough for arrays of ≤12 batteries. Replace with fast-deep-equal
+//             if battery count grows significantly or profiling shows it as a bottleneck.
 //
-//   TODO [PERF-2]: Debounce the Firebase push (set()) so rapid local changes
-//                  (e.g. user tapping quickly) batch into one write instead of
-//                  hammering the database on every state update.
-//                  Use a useRef timer: clear + reset on each batteries change,
-//                  only call set() after 300–500ms of no changes.
+//   [PERF-2]: Firebase writes are debounced by 400ms — rapid taps batch into one
+//             write instead of hammering the database on every state update.
 // -----------------------------------------------------------------------------
 // Handles ALL Firebase real-time sync and localStorage persistence for the
 // batteries array. Called internally by useBatteries.js — not used directly
@@ -23,7 +20,7 @@
 //   - Push local changes up to Firebase (unless the change came FROM Firebase)
 // =============================================================================
 
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { ref, set, onValue, off } from 'firebase/database'
 import { db, isFirebaseConfigured } from '../firebase'
 
@@ -45,6 +42,8 @@ export function useBatteriesSync(
   isRemoteUpdate,
   saveBatteries,
 ) {
+  // Debounce timer ref for Firebase writes (PERF-2)
+  const debounceRef = useRef(null)
 
   // ---------------------------------------------------------------------------
   // EFFECT — Firebase Real-Time Listener
@@ -107,7 +106,12 @@ export function useBatteriesSync(
 
     if (!isFirebaseConfigured || !syncCode) return
 
+    // Debounce: cancel any pending write, then schedule a new one 400ms out.
+    // This batches rapid taps into a single database write (PERF-2).
+    if (debounceRef.current) clearTimeout(debounceRef.current)
     const battRef = ref(db, `rooms/${syncCode}/batteries`)
-    set(battRef, batteries).catch(err => console.warn('Firebase write failed:', err))
+    debounceRef.current = setTimeout(() => {
+      set(battRef, batteries).catch(err => console.warn('Firebase write failed:', err))
+    }, 400)
   }, [batteries, syncCode]) // eslint-disable-line react-hooks/exhaustive-deps
 }

@@ -1,15 +1,13 @@
 // =============================================================================
 // App.jsx
 //
-// EFFICIENCY TODOs:
-//   TODO [PERF-7]: The 10-second tick (setInterval) forces a full re-render of
-//                  the entire app just to update elapsed time displays. Move the
-//                  tick into the components that actually need it (BatteryCard,
-//                  BatteryModal) so only those re-render, not the whole tree.
+// EFFICIENCY NOTES:
+//   [PERF-7]: The 10-second tick still re-renders the full tree. A future
+//             improvement would be to move the tick into BatteryCard/BatteryModal
+//             directly so only those components refresh elapsed time displays.
 //
-//   TODO [PERF-8]: BatteryGrid re-renders all cards whenever ANY battery changes.
-//                  Wrap BatteryCard in React.memo so only the specific card whose
-//                  data changed re-renders.
+//   [PERF-8]: BatteryCard is wrapped in React.memo — only cards whose battery
+//             data actually changed will re-render when the array updates.
 // -----------------------------------------------------------------------------
 // Root component. Owns all top-level state and wires every sub-component together.
 //
@@ -22,7 +20,7 @@
 //   - Decide whether to render normal pit view or field/view-only view
 // =============================================================================
 
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useMemo } from 'react'
 
 // --- Components ---
 import Header        from './components/Header'
@@ -119,7 +117,7 @@ export default function App() {
     updateReadings,
     updateMeta,
     resetAll,
-    // TODO: ADD toggleSpare HERE — destructure it from useBatteries once added
+    toggleSpare,
   } = useBatteries(settings.batteryCount, settings.syncCode, handleSyncStatus)
 
   // ---------------------------------------------------------------------------
@@ -161,11 +159,17 @@ export default function App() {
   // Computed fresh each render from the current battery array + settings.
   // ==========================================================================
 
-  // The battery the pit crew should grab next
-  const bestNext = getBestNextBattery(batteries, settings.chargeThreshold)
+  // The battery the pit crew should grab next (memoized — PERF-3)
+  const bestNext = useMemo(
+    () => getBestNextBattery(batteries, settings.chargeThreshold),
+    [batteries, settings.chargeThreshold]
+  )
 
-  // The battery currently installed in the robot (or null)
-  const inBotBattery = getInBotBattery(batteries)
+  // The battery currently installed in the robot, or null (memoized — PERF-3)
+  const inBotBattery = useMemo(
+    () => getInBotBattery(batteries),
+    [batteries]
+  )
 
   // The battery whose detail modal is open — kept in sync with the live array
   const modalBattery = selectedBattery
@@ -186,8 +190,8 @@ export default function App() {
   // Put battery in bot AND close the detail modal
   function handlePutInBot(id) { putInBot(id); closeModal() }
 
-  // TODO: ADD handleToggleSpare HANDLER HERE once toggleSpare is in useBatteries:
-  //   function handleToggleSpare(id) { toggleSpare(id) }
+  // Toggle spare flag on a battery (does not close the modal)
+  function handleToggleSpare(id) { toggleSpare(id) }
 
   // ==========================================================================
   // SECTION 6 — RENDER
@@ -271,8 +275,7 @@ export default function App() {
           onMarkDepleted={() => { markDepleted(modalBattery.id); closeModal() }}
           onUpdateReadings={(data) => updateReadings(modalBattery.id, data)}
           onUpdateMeta={(data) => updateMeta(modalBattery.id, data)}
-          // TODO: ADD onToggleSpare PROP HERE once handler above is written:
-          //   onToggleSpare={() => handleToggleSpare(modalBattery.id)}
+          onToggleSpare={() => handleToggleSpare(modalBattery.id)}
         />
       )}
 

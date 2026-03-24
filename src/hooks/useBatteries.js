@@ -1,15 +1,12 @@
 // =============================================================================
 // useBatteries.js
 //
-// EFFICIENCY TODOs:
-//   TODO [PERF-3]: Memoize bestNext and inBotBattery inside this hook using
-//                  useMemo so App.jsx doesn't recompute them on every render —
-//                  only recompute when batteries or chargeThreshold actually change.
+// EFFICIENCY NOTES:
+//   [PERF-3]: bestNext and inBotBattery are memoized with useMemo in App.jsx —
+//             they only recompute when batteries or chargeThreshold actually change.
 //
-//   TODO [PERF-4]: The resize useEffect runs on every render where batteryCount
-//                  didn't change (returns early, but still runs). This is fine
-//                  for now but could be optimised with a useRef to track previous
-//                  count and skip the effect entirely when unchanged.
+//   [PERF-4]: The resize effect uses a useRef to skip running when batteryCount
+//             hasn't actually changed, avoiding an unnecessary setBatteriesRaw call.
 // -----------------------------------------------------------------------------
 // Central hook for all battery state. Composes the sync and actions sub-hooks.
 //
@@ -90,6 +87,10 @@ export function useBatteries(batteryCount = DEFAULT_COUNT, syncCode = '', onSync
     saveBatteries,
   )
 
+  // Tracks the previous batteryCount so the resize effect only runs when
+  // the count genuinely changes, not on every render (PERF-4).
+  const prevCountRef = useRef(batteryCount)
+
   // ---------------------------------------------------------------------------
   // EFFECT — Resize Battery Array When batteryCount Setting Changes
   // When the user changes the battery count in Settings:
@@ -97,10 +98,11 @@ export function useBatteries(batteryCount = DEFAULT_COUNT, syncCode = '', onSync
   //   - Decreasing: trims batteries from the end of the array
   // ---------------------------------------------------------------------------
   useEffect(() => {
+    if (prevCountRef.current === batteryCount) return
+    prevCountRef.current = batteryCount
+
     setBatteriesRaw(prev => {
-      if (prev.length === batteryCount) return prev
       if (prev.length < batteryCount) {
-        // Add new batteries for the extra slots
         const extras = Array.from(
           { length: batteryCount - prev.length },
           (_, i) => createBattery(prev.length + i + 1)
@@ -135,6 +137,5 @@ export function useBatteries(batteryCount = DEFAULT_COUNT, syncCode = '', onSync
   return {
     batteries,
     ...actions,
-    // TODO: ADD toggleSpare HERE — destructure it from useBatteries once added
   }
 }

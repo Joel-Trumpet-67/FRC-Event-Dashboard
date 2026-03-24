@@ -1,17 +1,14 @@
 // =============================================================================
 // useBatteriesActions.js
 //
-// EFFICIENCY TODOs:
-//   TODO [PERF-5]: All actions use prev.map() which creates a new array even
-//                  when only one battery changes. Consider using immer (produce)
-//                  to make immutable updates more efficient and readable —
-//                  especially useful if battery count grows large.
+// EFFICIENCY NOTES:
+//   [PERF-5]: All actions use prev.map() which creates a new array even when
+//             only one battery changes. Consider immer (produce) for larger
+//             battery counts if performance becomes a concern.
 //
-//   TODO [PERF-6]: updateReadings and updateMeta do not need to go through
-//                  addHistory for the metadata update — separate the two
-//                  concerns so history log writes don't trigger if only notes
-//                  or label changed (updateMeta already does this correctly —
-//                  make sure it stays that way).
+//   [PERF-6]: updateMeta intentionally does NOT call addHistory — label/notes
+//             changes are silent. updateReadings DOES log to history.
+//             Keep this distinction when adding new actions.
 // -----------------------------------------------------------------------------
 // All battery status-transition actions. Called internally by useBatteries.js.
 //
@@ -20,8 +17,6 @@
 //   - Finds that battery in the array via setBatteries
 //   - Returns a new battery object with the updated status + timestamps
 //   - Appends an entry to the battery's history log via addHistory()
-//
-// TODO: Add toggleSpare action here (see STOP 2 in the spare battery guide)
 // =============================================================================
 
 import { useCallback } from 'react'
@@ -189,8 +184,15 @@ export function useBatteriesActions(setBatteries, batteryCount, buildDefault) {
   }, [setBatteries, batteryCount, buildDefault])
 
   // ---------------------------------------------------------------------------
-  // TODO: ADD toggleSpare ACTION HERE (STOP 2 from the spare battery guide)
+  // toggleSpare — marks or unmarks a battery as the spare on the cart.
+  // Only one battery is typically spare, but no hard limit is enforced here —
+  // the UI can show a warning if more than one is marked spare.
   // ---------------------------------------------------------------------------
+  const toggleSpare = useCallback((id) => {
+    setBatteries(prev => prev.map(b =>
+      b.id === id ? { ...b, isSpare: !b.isSpare } : b
+    ))
+  }, [setBatteries])
 
   // ---------------------------------------------------------------------------
   // Return all actions so useBatteries.js can expose them to components
@@ -205,6 +207,6 @@ export function useBatteriesActions(setBatteries, batteryCount, buildDefault) {
     updateReadings,
     updateMeta,
     resetAll,
-    // TODO: ADD toggleSpare HERE once written above
+    toggleSpare,
   }
 }

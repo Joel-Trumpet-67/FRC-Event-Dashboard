@@ -27,8 +27,7 @@ export default function BatteryModal({
   onMarkDepleted,
   onUpdateReadings,
   onUpdateMeta,
-  // TODO: ADD onToggleSpare PROP HERE — receive it from App.jsx:
-  //   onToggleSpare,
+  onToggleSpare,
 }) {
   const [voltageInput, setVoltageInput] = useState(
     battery.voltage != null ? String(battery.voltage) : ''
@@ -226,14 +225,15 @@ export default function BatteryModal({
             : <ActionButtons />
           }
 
-          {/* -------------------------------------------------------------------
-            TODO: ADD SPARE TOGGLE BUTTON HERE
-            After the action buttons, add a button that calls onToggleSpare.
-            Example:
-              <button onClick={onToggleSpare}>
-                {battery.isSpare ? '★ Remove Spare' : '☆ Mark as Spare'}
-              </button>
-          ------------------------------------------------------------------- */}
+          {/* Spare battery toggle — marks this battery as the cart spare */}
+          {!viewOnly && (
+            <button
+              className={`spare-btn ${battery.isSpare ? 'spare-active' : ''}`}
+              onClick={onToggleSpare}
+            >
+              {battery.isSpare ? '★ Remove Spare' : '☆ Mark as Spare'}
+            </button>
+          )}
 
           {/* Readings section */}
           <div className="modal-section readings-section">
