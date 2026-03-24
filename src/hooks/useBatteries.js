@@ -65,12 +65,14 @@ export function useBatteries(batteryCount = DEFAULT_COUNT, syncCode = '', onSync
       ? saved
       : buildDefaultBatteries(batteryCount)
 
-    // Enforce one standby at a time on load — if old data has multiple,
+    // Migrate old 'standby' status value to 'backup' (renamed in v1.1).
+    // Also enforce one backup at a time on load — if old data has multiple,
     // keep only the first and move the rest back to ready.
-    let seenStandby = false
+    let seenBackup = false
     return source.map(b => {
-      if (b.status !== 'standby') return b
-      if (!seenStandby) { seenStandby = true; return b }
+      const status = b.status === 'standby' ? 'backup' : b.status  // migrate old value
+      if (status !== 'backup') return { ...b, status }
+      if (!seenBackup) { seenBackup = true; return { ...b, status } }
       return { ...b, status: 'ready' }
     })
   })

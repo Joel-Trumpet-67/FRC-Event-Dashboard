@@ -118,7 +118,7 @@ export default function App() {
     updateMeta,
     resetAll,
     resetStats,
-    markStandby,
+    markBackup,
   } = useBatteries(settings.batteryCount, settings.syncCode, handleSyncStatus)
 
   // ---------------------------------------------------------------------------
@@ -209,8 +209,8 @@ export default function App() {
   // Put battery in bot AND close the detail modal
   function handlePutInBot(id) { putInBot(id); closeModal() }
 
-  // Mark a battery as standby (does not close the modal)
-  function handleMarkStandby(id) { markStandby(id) }
+  // Mark a battery as backup (does not close the modal)
+  function handleMarkBackup(id) { markBackup(id) }
 
   // ==========================================================================
   // SECTION 6 — RENDER
@@ -275,7 +275,7 @@ export default function App() {
           <span className="legend-item" style={{ color: '#f59e0b' }}>● Charging</span>
           <span className="legend-item" style={{ color: '#f97316' }}>● Cooling</span>
           <span className="legend-item" style={{ color: '#22c55e' }}>● Ready</span>
-          <span className="legend-item" style={{ color: '#8b5cf6' }}>● Standby</span>
+          <span className="legend-item" style={{ color: '#8b5cf6' }}>● Backup</span>
           <span className="legend-item" style={{ color: '#3b82f6' }}>● In Bot</span>
         </div>
       </main>
@@ -296,7 +296,7 @@ export default function App() {
           onMarkDepleted={() => { markDepleted(modalBattery.id); closeModal() }}
           onUpdateReadings={(data) => updateReadings(modalBattery.id, data)}
           onUpdateMeta={(data) => updateMeta(modalBattery.id, data)}
-          onMarkStandby={() => handleMarkStandby(modalBattery.id)}
+          onMarkBackup={() => handleMarkBackup(modalBattery.id)}
         />
       )}
 

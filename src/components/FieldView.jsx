@@ -20,7 +20,7 @@ export default function FieldView({ batteries, matchNumber, chargeThresholdMin, 
   const now = Date.now()
   const bestNext = getBestNextBattery(batteries, chargeThresholdMin)
   const inBot = getInBotBattery(batteries)
-  const spare = batteries.find(b => b.status === STATUS.STANDBY) ?? null
+  const spare = batteries.find(b => b.status === STATUS.BACKUP) ?? null
 
   const inBotElapsed = inBot?.putInBotTime ? now - inBot.putInBotTime : null
 
@@ -119,7 +119,7 @@ export default function FieldView({ batteries, matchNumber, chargeThresholdMin, 
         </div>
 
         <div className="field-spare-section">
-          <div className="field-section-label">⏸ STANDBY</div>
+          <div className="field-section-label">⏸ BACKUP</div>
           {spare ? (
             <div className="field-spare-card">
               <span className="field-spare-name">{spare.label}</span>

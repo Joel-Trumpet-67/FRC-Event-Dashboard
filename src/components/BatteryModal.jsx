@@ -27,7 +27,7 @@ export default function BatteryModal({
   onMarkDepleted,
   onUpdateReadings,
   onUpdateMeta,
-  onMarkStandby,
+  onMarkBackup,
 }) {
   const [voltageInput, setVoltageInput] = useState(
     battery.voltage != null ? String(battery.voltage) : ''
@@ -65,7 +65,7 @@ export default function BatteryModal({
     elapsedMs = now - battery.putInBotTime
   } else if (battery.status === STATUS.READY && battery.chargeEndTime) {
     elapsedMs = now - battery.chargeEndTime
-  } else if (battery.status === STATUS.STANDBY && battery.chargeEndTime) {
+  } else if (battery.status === STATUS.BACKUP && battery.chargeEndTime) {
     elapsedMs = now - battery.chargeEndTime
   }
 
@@ -118,11 +118,11 @@ export default function BatteryModal({
         return (
           <div className="action-group">
             <ActionBtn color="#3b82f6" icon="🤖" label="Put in Bot" onClick={onPutInBot} />
-            <ActionBtn color="#8b5cf6" icon="⏸" label="Mark Standby" onClick={onMarkStandby} secondary />
+            <ActionBtn color="#8b5cf6" icon="⏸" label="Mark Backup" onClick={onMarkBackup} secondary />
             <ActionBtn color="#ef4444" icon="✖" label="Mark Depleted" onClick={onMarkDepleted} secondary />
           </div>
         )
-      case STATUS.STANDBY:
+      case STATUS.BACKUP:
         return (
           <div className="action-group">
             <ActionBtn color="#3b82f6" icon="🤖" label="Put in Bot" onClick={onPutInBot} />
@@ -201,7 +201,7 @@ export default function BatteryModal({
                 {battery.status === STATUS.IN_BOT   && '🤖 In bot for: '}
                 {battery.status === STATUS.COOLING  && '❄️ Cooling for: '}
                 {battery.status === STATUS.READY    && '✅ Ready for: '}
-                {battery.status === STATUS.STANDBY  && '⏸ On standby for: '}
+                {battery.status === STATUS.BACKUP   && '⏸ Backup for: '}
                 <strong>{formatElapsed(elapsedMs)}</strong>
               </div>
             )}

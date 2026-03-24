@@ -18,7 +18,7 @@ const STATUS_ICON = {
   charging: '🔋',
   cooling:  '❄️',
   ready:    '✅',
-  standby:  '⏸️',
+  backup:   '⏸️',
   in_bot:   '🤖',
 }
 

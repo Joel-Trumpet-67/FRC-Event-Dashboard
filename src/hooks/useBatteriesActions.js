@@ -199,19 +199,19 @@ export function useBatteriesActions(setBatteries, batteryCount, buildDefault) {
   }, [setBatteries])
 
   // ---------------------------------------------------------------------------
-  // markStandby — moves a battery to STANDBY (charged but held in reserve).
-  // Standby batteries are excluded from the "USE NEXT" recommendation so
+  // markBackup — moves a battery to BACKUP (charged but held in reserve).
+  // Backup batteries are excluded from the "USE NEXT" recommendation so
   // the crew has explicit control over when this reserve battery gets used.
   // Can be called from READY. To return to use, call markReady.
   // ---------------------------------------------------------------------------
-  const markStandby = useCallback((id) => {
+  const markBackup = useCallback((id) => {
     setBatteries(prev => prev.map(b => {
-      // Only one standby at a time — bump any existing standby back to ready
-      if (b.id !== id && b.status === STATUS.STANDBY) {
-        return addHistory({ ...b, status: STATUS.READY }, 'Standby cleared', 'Replaced by new standby')
+      // Only one backup at a time — bump any existing backup back to ready
+      if (b.id !== id && b.status === STATUS.BACKUP) {
+        return addHistory({ ...b, status: STATUS.READY }, 'Backup cleared', 'Replaced by new backup')
       }
       if (b.id !== id) return b
-      return addHistory({ ...b, status: STATUS.STANDBY }, 'Marked standby', 'Held in reserve')
+      return addHistory({ ...b, status: STATUS.BACKUP }, 'Marked backup', 'Held in reserve')
     }))
   }, [setBatteries])
 
@@ -229,6 +229,6 @@ export function useBatteriesActions(setBatteries, batteryCount, buildDefault) {
     updateMeta,
     resetAll,
     resetStats,
-    markStandby,
+    markBackup,
   }
 }
