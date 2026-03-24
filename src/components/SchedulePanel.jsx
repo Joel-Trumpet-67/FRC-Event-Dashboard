@@ -127,35 +127,51 @@ export default function SchedulePanel({ settings, onClose }) {
     setLoading(true)
     setError(null)
 
-    // Fetch all three in parallel — a Statbotics failure won't block TBA
-    const [matchResult, eventResult, statsResult] = await Promise.allSettled([
-      fetchTeamMatches(teamNumber, eventCode, tbaKey),
+    // Fetch event info + Statbotics in parallel — failures won't block the schedule
+    const [eventResult, statsResult] = await Promise.allSettled([
       fetchEventInfo(eventCode, tbaKey),
       fetchTeamEventStats(teamNumber, eventCode),
     ])
 
-    // TBA matches are required — everything else is nice-to-have
-    if (matchResult.status === 'rejected') {
-      setError(`Failed to load schedule: ${matchResult.reason?.message ?? 'Unknown error'}`)
-      setLoading(false)
-      return
+    // --- Step 1: try the team-specific endpoint ---
+    let resolvedMatches = null
+    let fetchError      = null
+
+    try {
+      const teamMatches = await fetchTeamMatches(teamNumber, eventCode, tbaKey)
+      if (Array.isArray(teamMatches) && teamMatches.length > 0) {
+        resolvedMatches = teamMatches
+      }
+    } catch (err) {
+      fetchError = err.message
     }
 
-    let resolvedMatches = matchResult.value
-
-    // Team-specific endpoint returned empty — fall back to all event matches
-    // and filter client-side. This handles events not yet started, or where
-    // TBA's team index hasn't been populated yet.
-    if (!Array.isArray(resolvedMatches) || resolvedMatches.length === 0) {
+    // --- Step 2: if Step 1 gave nothing, fetch ALL event matches and filter ---
+    if (!resolvedMatches) {
       try {
         const allMatches = await fetchEventMatches(eventCode, tbaKey)
+        if (!Array.isArray(allMatches)) {
+          // TBA returned a non-array — likely an auth error object
+          throw new Error(`Unexpected TBA response: ${JSON.stringify(allMatches).slice(0, 120)}`)
+        }
         const key = `frc${teamNumber}`
-        resolvedMatches = allMatches.filter(m =>
+        const filtered = allMatches.filter(m =>
           m.alliances?.red?.team_keys?.includes(key) ||
           m.alliances?.blue?.team_keys?.includes(key)
         )
-      } catch {
-        // Fallback also failed — leave resolvedMatches as empty array
+        // If team not found in any match, show all matches so user can verify event
+        resolvedMatches = filtered.length > 0 ? filtered : allMatches
+        if (filtered.length === 0 && allMatches.length > 0) {
+          fetchError = `Team ${teamNumber} not found in any match at ${eventCode}. Showing all ${allMatches.length} matches — check your team number.`
+        }
+      } catch (err) {
+        // Both endpoints failed — surface the real error
+        setError(
+          `Could not load schedule.\n\n${fetchError ?? err.message}\n\n` +
+          `Check your TBA API key and event code (${eventCode}).`
+        )
+        setLoading(false)
+        return
       }
     }
     const resolvedEventInfo = eventResult.status  === 'fulfilled' ? eventResult.value  : null
@@ -297,10 +313,10 @@ export default function SchedulePanel({ settings, onClose }) {
               {/* Match list */}
               {sortedMatches.length === 0 ? (
                 <div className="schedule-empty">
-                  No matches found for team {settings.teamNumber} at <strong>{settings.eventCode}</strong>.<br/>
+                  No matches found at <strong>{settings.eventCode}</strong>.<br/>
                   <span style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 6, display: 'block' }}>
-                    Check your team number and event code in Settings.<br/>
-                    Event codes are lowercase, e.g. <strong>2024casj</strong><br/>
+                    The event may not have matches posted yet.<br/>
+                    Event codes are lowercase — e.g. <strong>2024casj</strong><br/>
                     Find yours at thebluealliance.com/events
                   </span>
                 </div>
