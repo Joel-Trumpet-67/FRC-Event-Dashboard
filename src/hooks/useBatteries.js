@@ -92,6 +92,23 @@ export function useBatteries(batteryCount = DEFAULT_COUNT, syncCode = '', onSync
     set(battRef, batteries).catch(err => console.warn('Firebase write failed:', err))
   }, [batteries, syncCode])
 
+  // ─── Resize batteries array when batteryCount changes ─────────────────────
+  useEffect(() => {
+    setBatteriesRaw(prev => {
+      if (prev.length === batteryCount) return prev
+      if (prev.length < batteryCount) {
+        // Add new batteries for the extra slots
+        const extras = Array.from(
+          { length: batteryCount - prev.length },
+          (_, i) => createBattery(prev.length + i + 1)
+        )
+        return [...prev, ...extras]
+      }
+      // Trim excess batteries
+      return prev.slice(0, batteryCount)
+    })
+  }, [batteryCount])
+
   // ─── Internal setter ───────────────────────────────────────────────────────
   const setBatteries = useCallback((updater) => {
     setBatteriesRaw(prev =>
