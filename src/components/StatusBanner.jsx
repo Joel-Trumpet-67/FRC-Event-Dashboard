@@ -15,6 +15,7 @@ export default function StatusBanner({
   chargeThresholdMin,
   onBatteryClick,
 }) {
+  const spareBattery = batteries.find(b => b.isSpare) ?? null
   const now = Date.now()
 
   // Elapsed time this battery has been in the bot
@@ -52,6 +53,25 @@ export default function StatusBanner({
           </>
         ) : (
           <div className="banner-card-empty">No battery in bot</div>
+        )}
+      </div>
+
+      {/* SPARE card */}
+      <div
+        className={`banner-card spare-card ${spareBattery ? 'clickable' : 'empty'}`}
+        onClick={() => spareBattery && onBatteryClick(spareBattery)}
+        role={spareBattery ? 'button' : undefined}
+      >
+        <div className="banner-card-label">★ SPARE</div>
+        {spareBattery ? (
+          <>
+            <div className="banner-card-name">{spareBattery.label}</div>
+            {spareBattery.voltage && (
+              <div className="banner-card-voltage">{spareBattery.voltage.toFixed(1)}V</div>
+            )}
+          </>
+        ) : (
+          <div className="banner-card-empty">None marked</div>
         )}
       </div>
 

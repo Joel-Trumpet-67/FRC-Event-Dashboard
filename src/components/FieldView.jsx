@@ -20,6 +20,7 @@ export default function FieldView({ batteries, matchNumber, chargeThresholdMin, 
   const now = Date.now()
   const bestNext = getBestNextBattery(batteries, chargeThresholdMin)
   const inBot = getInBotBattery(batteries)
+  const spare = batteries.find(b => b.isSpare) ?? null
 
   const inBotElapsed = inBot?.putInBotTime ? now - inBot.putInBotTime : null
 
@@ -99,19 +100,37 @@ export default function FieldView({ batteries, matchNumber, chargeThresholdMin, 
         )}
       </div>
 
-      {/* IN BOT — smaller section */}
-      <div className="field-inbot-section">
-        <div className="field-section-label">🤖 IN BOT</div>
-        {inBot ? (
-          <div className="field-inbot-card">
-            <span className="field-inbot-name">{inBot.label}</span>
-            {inBotElapsed !== null && (
-              <span className="field-inbot-time">{formatElapsed(inBotElapsed)}</span>
-            )}
-          </div>
-        ) : (
-          <div className="field-inbot-card field-empty">No battery in bot</div>
-        )}
+      {/* IN BOT + SPARE — side by side at the bottom */}
+      <div className="field-bottom-row">
+
+        <div className="field-inbot-section">
+          <div className="field-section-label">🤖 IN BOT</div>
+          {inBot ? (
+            <div className="field-inbot-card">
+              <span className="field-inbot-name">{inBot.label}</span>
+              {inBotElapsed !== null && (
+                <span className="field-inbot-time">{formatElapsed(inBotElapsed)}</span>
+              )}
+            </div>
+          ) : (
+            <div className="field-inbot-card field-empty">No battery in bot</div>
+          )}
+        </div>
+
+        <div className="field-spare-section">
+          <div className="field-section-label">★ SPARE</div>
+          {spare ? (
+            <div className="field-spare-card">
+              <span className="field-spare-name">{spare.label}</span>
+              {spare.voltage && (
+                <span className="field-spare-voltage">{spare.voltage.toFixed(1)}V</span>
+              )}
+            </div>
+          ) : (
+            <div className="field-spare-card field-empty">None marked</div>
+          )}
+        </div>
+
       </div>
 
     </div>

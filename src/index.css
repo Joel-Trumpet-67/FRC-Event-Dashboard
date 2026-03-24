@@ -261,6 +261,10 @@ input:focus, textarea:focus {
   border-color: #15803d;
 }
 
+.banner-card.spare-card {
+  border-color: #a16207;
+}
+
 .banner-card.warn {
   border-color: #b45309;
 }
@@ -354,6 +358,20 @@ input:focus, textarea:focus {
   top: -10px;
   right: 8px;
   background: var(--green);
+  color: #000;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.5px;
+  padding: 2px 8px;
+  border-radius: 99px;
+  text-transform: uppercase;
+}
+
+.spare-badge {
+  position: absolute;
+  top: -10px;
+  left: 8px;
+  background: var(--amber);
   color: #000;
   font-size: 10px;
   font-weight: 900;
@@ -670,6 +688,30 @@ input:focus, textarea:focus {
 
 .action-icon {
   font-size: 20px;
+}
+
+/* Spare toggle button — sits below the action buttons in the battery modal */
+.spare-btn {
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: var(--radius);
+  font-size: 15px;
+  font-weight: 700;
+  background: transparent;
+  border: 2px solid var(--amber);
+  color: var(--amber);
+  margin-top: 8px;
+  transition: opacity 0.1s, transform 0.1s;
+}
+
+.spare-btn:active {
+  opacity: 0.8;
+  transform: scale(0.98);
+}
+
+.spare-btn.spare-active {
+  background: var(--amber);
+  color: #000;
 }
 
 .action-label {
@@ -1195,6 +1237,14 @@ input:focus, textarea:focus {
   color: var(--red);
 }
 
+/* IN BOT + SPARE — side-by-side row at the bottom of the field view */
+.field-bottom-row {
+  display: flex;
+  flex-direction: row;
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
 /* IN BOT — smaller section */
 .field-inbot-section {
   display: flex;
@@ -1203,8 +1253,39 @@ input:focus, textarea:focus {
   gap: 8px;
   padding: 16px 20px calc(16px + env(safe-area-inset-bottom));
   background: var(--surface);
-  border-top: 1px solid var(--border);
-  flex-shrink: 0;
+  flex: 1;
+  border-right: 1px solid var(--border);
+}
+
+/* SPARE — mirrors IN BOT section */
+.field-spare-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 20px calc(16px + env(safe-area-inset-bottom));
+  background: var(--surface);
+  flex: 1;
+}
+
+.field-spare-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--amber);
+}
+
+.field-spare-name {
+  font-size: 28px;
+  font-weight: 900;
+}
+
+.field-spare-voltage {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-muted);
 }
 
 .field-inbot-card {
