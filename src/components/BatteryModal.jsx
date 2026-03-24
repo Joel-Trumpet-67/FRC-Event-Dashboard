@@ -125,9 +125,10 @@ export default function BatteryModal({
       case STATUS.BACKUP:
         return (
           <div className="action-group">
-            <ActionBtn color="#3b82f6" icon="🤖" label="Put in Bot" onClick={onPutInBot} />
-            <ActionBtn color="#22c55e" icon="✅" label="Mark Ready" onClick={onMarkReady} secondary />
-            <ActionBtn color="#ef4444" icon="✖" label="Mark Depleted" onClick={onMarkDepleted} secondary />
+            <ActionBtn color="#3b82f6" icon="🤖" label="Put in Bot"      onClick={onPutInBot} />
+            <ActionBtn color="#22c55e" icon="✅" label="Mark Ready"       onClick={onMarkReady}      secondary />
+            <ActionBtn color="#f59e0b" icon="🔌" label="Start Charging"   onClick={onStartCharging}  secondary />
+            <ActionBtn color="#ef4444" icon="✖"  label="Mark Depleted"    onClick={onMarkDepleted}   secondary />
           </div>
         )
       case STATUS.IN_BOT:
