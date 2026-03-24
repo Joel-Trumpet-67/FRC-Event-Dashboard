@@ -44,6 +44,20 @@ export async function fetchTeamMatches(teamNumber, eventCode, apiKey) {
 }
 
 // -----------------------------------------------------------------------------
+// fetchEventMatches — returns ALL matches at an event (all teams).
+// Used as a fallback when the team-specific endpoint returns an empty array
+// (e.g. event not yet started, or team key mismatch).
+// Filter the result client-side by checking alliances.red/blue.team_keys.
+//
+// @param {string} eventCode — e.g. "2024casj"
+// @param {string} apiKey
+// @returns {Array}
+// -----------------------------------------------------------------------------
+export async function fetchEventMatches(eventCode, apiKey) {
+  return tbaFetch(`/event/${eventCode}/matches/simple`, apiKey)
+}
+
+// -----------------------------------------------------------------------------
 // fetchEventInfo — returns basic info about an event (name, location, dates).
 //
 // @param {string} eventCode — e.g. "2024casj"

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { fetchTeamMatches, fetchEventInfo } from '../utils/tbaApi'
+import { fetchTeamMatches, fetchEventMatches, fetchEventInfo } from '../utils/tbaApi'
 import { fetchTeamEventStats }             from '../utils/statboticsApi'
 import { loadScheduleCache, saveScheduleCache } from '../utils/storage'
 
@@ -141,7 +141,23 @@ export default function SchedulePanel({ settings, onClose }) {
       return
     }
 
-    const resolvedMatches   = matchResult.value
+    let resolvedMatches = matchResult.value
+
+    // Team-specific endpoint returned empty — fall back to all event matches
+    // and filter client-side. This handles events not yet started, or where
+    // TBA's team index hasn't been populated yet.
+    if (!Array.isArray(resolvedMatches) || resolvedMatches.length === 0) {
+      try {
+        const allMatches = await fetchEventMatches(eventCode, tbaKey)
+        const key = `frc${teamNumber}`
+        resolvedMatches = allMatches.filter(m =>
+          m.alliances?.red?.team_keys?.includes(key) ||
+          m.alliances?.blue?.team_keys?.includes(key)
+        )
+      } catch {
+        // Fallback also failed — leave resolvedMatches as empty array
+      }
+    }
     const resolvedEventInfo = eventResult.status  === 'fulfilled' ? eventResult.value  : null
     const resolvedStats     = statsResult.status  === 'fulfilled' ? statsResult.value  : null
 
@@ -280,7 +296,14 @@ export default function SchedulePanel({ settings, onClose }) {
 
               {/* Match list */}
               {sortedMatches.length === 0 ? (
-                <div className="schedule-empty">No matches found for this event.</div>
+                <div className="schedule-empty">
+                  No matches found for team {settings.teamNumber} at <strong>{settings.eventCode}</strong>.<br/>
+                  <span style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 6, display: 'block' }}>
+                    Check your team number and event code in Settings.<br/>
+                    Event codes are lowercase, e.g. <strong>2024casj</strong><br/>
+                    Find yours at thebluealliance.com/events
+                  </span>
+                </div>
               ) : (
                 <div className="schedule-list">
                   {sortedMatches.map(match => {
