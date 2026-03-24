@@ -79,23 +79,30 @@ export function useBatteriesActions(setBatteries, batteryCount, buildDefault) {
 
   // ---------------------------------------------------------------------------
   // putInBot — installs a battery into the robot, increments cycle count.
-  // If another battery is already IN_BOT it is automatically moved to COOLING.
+  //
+  // Pass 1: move the target battery to IN_BOT, auto-cool the previous in-bot.
+  // Pass 2: if no backup is already designated, find the best remaining READY
+  //         battery and auto-promote it to BACKUP so the crew always has a
+  //         reserve identified after every bot placement.
+  //
+  // "Best" = highest voltage → fewest cycles (same priority as USE NEXT).
   // ---------------------------------------------------------------------------
   const putInBot = useCallback((id) => {
     setBatteries(prev => {
       const now = Date.now()
-      return prev.map(b => {
+
+      // Pass 1 — handle in-bot transition and auto-cooling of previous battery
+      const afterInBot = prev.map(b => {
         if (b.id === id) {
           const updated = {
             ...b,
-            status:              STATUS.IN_BOT,
-            putInBotTime:        now,
-            removedFromBotTime:  null,
-            cycleCount:          b.cycleCount + 1,
+            status:             STATUS.IN_BOT,
+            putInBotTime:       now,
+            removedFromBotTime: null,
+            cycleCount:         b.cycleCount + 1,
           }
           return addHistory(updated, 'Put in bot', `Cycle #${updated.cycleCount}`)
         }
-        // Auto-move the previous in-bot battery to cooling
         if (b.status === STATUS.IN_BOT) {
           return addHistory({
             ...b,
@@ -105,6 +112,26 @@ export function useBatteriesActions(setBatteries, batteryCount, buildDefault) {
           }, 'Removed from bot (auto)', 'Replaced by new battery')
         }
         return b
+      })
+
+      // Pass 2 — auto-fill backup slot if it is currently empty
+      const hasBackup = afterInBot.some(b => b.status === STATUS.BACKUP)
+      if (hasBackup) return afterInBot
+
+      // Find the best READY battery: highest voltage, then fewest cycles
+      const readyBatteries = afterInBot.filter(b => b.status === STATUS.READY)
+      if (readyBatteries.length === 0) return afterInBot
+
+      const best = readyBatteries.sort((a, b) => {
+        if (a.voltage !== null && b.voltage !== null) return b.voltage - a.voltage
+        if (a.voltage !== null) return -1
+        if (b.voltage !== null) return 1
+        return a.cycleCount - b.cycleCount
+      })[0]
+
+      return afterInBot.map(b => {
+        if (b.id !== best.id) return b
+        return addHistory({ ...b, status: STATUS.BACKUP }, 'Auto-marked backup', 'Best available after bot placement')
       })
     })
   }, [setBatteries])
@@ -203,12 +230,20 @@ export function useBatteriesActions(setBatteries, batteryCount, buildDefault) {
   // Backup batteries are excluded from the "USE NEXT" recommendation so
   // the crew has explicit control over when this reserve battery gets used.
   // Can be called from READY. To return to use, call markReady.
+  //
+  // If another battery is already BACKUP it is displaced — sent straight to
+  // CHARGING so it gets a top-up rather than sitting idle at READY.
   // ---------------------------------------------------------------------------
   const markBackup = useCallback((id) => {
     setBatteries(prev => prev.map(b => {
-      // Only one backup at a time — bump any existing backup back to ready
+      // Displace any existing backup → send it to charging for a top-up
       if (b.id !== id && b.status === STATUS.BACKUP) {
-        return addHistory({ ...b, status: STATUS.READY }, 'Backup cleared', 'Replaced by new backup')
+        return addHistory({
+          ...b,
+          status:          STATUS.CHARGING,
+          chargeStartTime: Date.now(),
+          chargeEndTime:   null,
+        }, 'Backup displaced → charging', 'Replaced by new backup')
       }
       if (b.id !== id) return b
       return addHistory({ ...b, status: STATUS.BACKUP }, 'Marked backup', 'Held in reserve')
