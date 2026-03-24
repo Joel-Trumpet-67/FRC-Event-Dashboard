@@ -71,6 +71,10 @@ export function saveScheduleCache(data) {
   localStorage.setItem(KEYS.SCHEDULE_CACHE, JSON.stringify(data))
 }
 
+export function clearScheduleCache() {
+  localStorage.removeItem(KEYS.SCHEDULE_CACHE)
+}
+
 export function clearAll() {
   Object.values(KEYS).forEach(k => localStorage.removeItem(k))
 }

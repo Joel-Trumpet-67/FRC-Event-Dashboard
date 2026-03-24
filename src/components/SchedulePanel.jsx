@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { fetchTeamMatches, fetchEventMatches, fetchEventInfo } from '../utils/tbaApi'
 import { fetchTeamEventStats, fetchEventMatchPredictions } from '../utils/statboticsApi'
-import { loadScheduleCache, saveScheduleCache } from '../utils/storage'
+import { loadScheduleCache, saveScheduleCache, clearScheduleCache } from '../utils/storage'
 
 // How long to use cached data before re-fetching (5 minutes)
 const CACHE_TTL_MS = 5 * 60 * 1000
@@ -314,7 +314,7 @@ export default function SchedulePanel({ settings, onClose }) {
           {loading && (
             <div className="schedule-loading">
               <div className="schedule-spinner" />
-              Fetching schedule…
+              Fetching frc{settings.teamNumber} @ {settings.eventCode}…
             </div>
           )}
 
@@ -398,26 +398,31 @@ export default function SchedulePanel({ settings, onClose }) {
                     <div className="schedule-empty">
                       {fetchDebug?.totalEventMatches > 0 ? (
                         <>
-                          Team <strong>{fetchDebug.teamKey}</strong> not found at <strong>{settings.eventCode}</strong>.<br/>
+                          <strong>frc{settings.teamNumber}</strong> was not found at <strong>{settings.eventCode}</strong>.<br/>
                           <span style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 6, display: 'block' }}>
-                            The event has <strong>{fetchDebug.totalEventMatches}</strong> matches but none include your team.<br/>
-                            Double-check your team number in Settings — it should match the team at this event.<br/>
-                            To test, set team to <strong>254</strong> with event <strong>2024casj</strong>.
+                            TBA returned <strong>{fetchDebug.totalEventMatches} matches</strong> for that event, but none include your team.<br/><br/>
+                            ✏️ Fix your <strong>Team Number</strong> in Settings — it must match a team that attended this event.<br/>
+                            🧪 To test: set team <strong>254</strong> + event <strong>2024casj</strong>.
                           </span>
                         </>
                       ) : (
                         <>
-                          No matches found at <strong>{settings.eventCode}</strong>.<br/>
+                          No matches at <strong>{settings.eventCode}</strong> for <strong>frc{settings.teamNumber}</strong>.<br/>
                           <span style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 6, display: 'block' }}>
                             {fetchDebug?.totalEventMatches === 0
-                              ? 'The event exists but has no matches posted yet.'
-                              : 'The event may not exist or matches haven\'t been posted yet.'
-                            }<br/>
-                            Event codes are lowercase — e.g. <strong>2024casj</strong><br/>
-                            Find yours at thebluealliance.com/events
+                              ? <>✅ Event exists — schedule not posted yet. Check back closer to event day.</>
+                              : <>❓ Event code may be wrong. Codes are lowercase e.g. <strong>2024casj</strong><br/>Find yours at thebluealliance.com/events</>
+                            }
                           </span>
                         </>
                       )}
+                      <button
+                        className="schedule-retry-btn"
+                        style={{ marginTop: 12 }}
+                        onClick={() => { clearScheduleCache(); loadData(true) }}
+                      >
+                        🗑 Clear Cache &amp; Retry
+                      </button>
                     </div>
                   ) : (
                     <div className="schedule-list">

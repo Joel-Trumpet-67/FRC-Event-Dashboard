@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { isFirebaseConfigured } from '../firebase'
+import { clearAll } from '../utils/storage'
 
 /**
  * Slide-up settings panel.
@@ -7,8 +8,9 @@ import { isFirebaseConfigured } from '../firebase'
  */
 export default function SettingsPanel({ settings, onSave, onResetAll, onResetStats, onClose }) {
   const [form, setForm] = useState({ ...settings })
-  const [confirmReset, setConfirmReset]      = useState(false)
+  const [confirmReset,      setConfirmReset]      = useState(false)
   const [confirmResetStats, setConfirmResetStats] = useState(false)
+  const [confirmClearAll,   setConfirmClearAll]   = useState(false)
 
   function handleChange(key, value) {
     setForm(prev => ({ ...prev, [key]: value }))
@@ -218,7 +220,7 @@ export default function SettingsPanel({ settings, onSave, onResetAll, onResetSta
               </button>
             )}
 
-            {/* Reset all — full wipe, rebuilds from scratch */}
+            {/* Reset all batteries — full wipe, rebuilds from scratch */}
             <button
               className={`reset-btn ${confirmReset ? 'confirm' : ''}`}
               onClick={handleReset}
@@ -227,6 +229,28 @@ export default function SettingsPanel({ settings, onSave, onResetAll, onResetSta
             </button>
             {confirmReset && (
               <button className="cancel-reset-btn" onClick={() => setConfirmReset(false)}>
+                Cancel
+              </button>
+            )}
+
+            {/* Nuclear option — wipes EVERYTHING including settings */}
+            <button
+              className={`reset-btn ${confirmClearAll ? 'confirm' : ''}`}
+              onClick={() => {
+                if (!confirmClearAll) {
+                  setConfirmClearAll(true)
+                  setConfirmReset(false)
+                  setConfirmResetStats(false)
+                  return
+                }
+                clearAll()
+                window.location.reload()
+              }}
+            >
+              {confirmClearAll ? '⚠ Confirm — wipes ALL app data & reloads!' : '💣 Clear All App Data'}
+            </button>
+            {confirmClearAll && (
+              <button className="cancel-reset-btn" onClick={() => setConfirmClearAll(false)}>
                 Cancel
               </button>
             )}
