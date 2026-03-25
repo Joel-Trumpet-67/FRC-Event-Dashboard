@@ -2242,3 +2242,36 @@ input:focus, textarea:focus {
   color: var(--text-muted);
   text-transform: uppercase;
 }
+
+/* ─── Coming Soon ────────────────────────────────────────────── */
+.coming-soon-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  text-align: center;
+  padding-top: 80px;
+}
+
+.coming-soon-icon {
+  font-size: 64px;
+  line-height: 1;
+}
+
+.coming-soon-title {
+  font-size: 26px;
+  font-weight: 800;
+  color: var(--text);
+}
+
+.coming-soon-desc {
+  font-size: 15px;
+  color: var(--text-muted);
+  max-width: 260px;
+  line-height: 1.5;
+}
+
+.home-tile.coming-soon {
+  opacity: 0.5;
+}

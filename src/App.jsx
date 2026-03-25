@@ -8,6 +8,7 @@ import TeamLookup      from './components/TeamLookup'
 import AllianceTracker from './components/AllianceTracker'
 import RobotChecklist  from './components/RobotChecklist'
 import MatchNotes      from './components/MatchNotes'
+import ScoutingView    from './components/ScoutingView'
 
 // --- Battery view components ---
 import Header       from './components/Header'
@@ -205,6 +206,11 @@ export default function App() {
   // ── Match Notes ───────────────────────────────────────────────
   if (activeView === 'notes') {
     return <MatchNotes matchNumber={matchNumber} onBack={goHome} />
+  }
+
+  // ── Scouting ──────────────────────────────────────────────────
+  if (activeView === 'scouting') {
+    return <ScoutingView onBack={goHome} />
   }
 
   // ── Battery view ──────────────────────────────────────────────

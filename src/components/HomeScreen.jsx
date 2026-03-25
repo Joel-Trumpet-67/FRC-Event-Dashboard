@@ -8,6 +8,7 @@ const TILES = [
   { id: 'checklist',  icon: '✅', label: 'Checklist',    sub: 'Pre-match robot check' },
   { id: 'alliance',   icon: '🤝', label: 'Alliance',     sub: 'Selection tracker' },
   { id: 'notes',      icon: '📝', label: 'Match Notes',  sub: 'Notes per match' },
+  { id: 'scouting',   icon: '📡', label: 'Scouting',     sub: 'Coming soon' },
 ]
 
 export default function HomeScreen({ teamNumber, syncStatus, onNavigate, onOpenSettings }) {
@@ -30,7 +31,7 @@ export default function HomeScreen({ teamNumber, syncStatus, onNavigate, onOpenS
         {TILES.map(tile => (
           <button
             key={tile.id}
-            className="home-tile"
+            className={`home-tile${tile.id === 'scouting' ? ' coming-soon' : ''}`}
             onClick={() => onNavigate(tile.id)}
           >
             <span className="home-tile-icon">{tile.icon}</span>
