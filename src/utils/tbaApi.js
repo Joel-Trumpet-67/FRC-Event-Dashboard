@@ -67,3 +67,38 @@ export async function fetchEventMatches(eventCode, apiKey) {
 export async function fetchEventInfo(eventCode, apiKey) {
   return tbaFetch(`/event/${eventCode}/simple`, apiKey)
 }
+
+// -----------------------------------------------------------------------------
+// fetchEventRankings — returns qualification rankings for an event.
+//
+// Response: { rankings: [{rank, team_key, record, sort_orders, ...}], sort_order_info }
+//
+// @param {string} eventCode
+// @param {string} apiKey
+// @returns {object}
+// -----------------------------------------------------------------------------
+export async function fetchEventRankings(eventCode, apiKey) {
+  return tbaFetch(`/event/${eventCode}/rankings`, apiKey)
+}
+
+// -----------------------------------------------------------------------------
+// fetchTeamSimple — returns basic info about a team.
+//
+// @param {string|number} teamNumber
+// @param {string} apiKey
+// @returns {object}  { key, team_number, nickname, city, state_prov, country }
+// -----------------------------------------------------------------------------
+export async function fetchTeamSimple(teamNumber, apiKey) {
+  return tbaFetch(`/team/frc${teamNumber}/simple`, apiKey)
+}
+
+// -----------------------------------------------------------------------------
+// fetchEventTeams — returns all teams at an event.
+//
+// @param {string} eventCode
+// @param {string} apiKey
+// @returns {Array}  array of team_simple objects
+// -----------------------------------------------------------------------------
+export async function fetchEventTeams(eventCode, apiKey) {
+  return tbaFetch(`/event/${eventCode}/teams/simple`, apiKey)
+}

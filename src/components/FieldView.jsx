@@ -68,6 +68,15 @@ export default function FieldView({ batteries, matchNumber, chargeThresholdMin, 
         />
       )}
 
+      {/* Drive Team */}
+      {(settings?.driver || settings?.operator || settings?.coach) && (
+        <div className="field-drive-team">
+          {settings.driver   && <span className="field-role"><span className="field-role-label">DRV</span>{settings.driver}</span>}
+          {settings.operator && <span className="field-role"><span className="field-role-label">OPR</span>{settings.operator}</span>}
+          {settings.coach    && <span className="field-role"><span className="field-role-label">CCH</span>{settings.coach}</span>}
+        </div>
+      )}
+
       {/* USE NEXT — dominant section */}
       <div className="field-next-section">
         <div className="field-section-label">⚡ GRAB THIS BATTERY</div>

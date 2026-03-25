@@ -270,27 +270,24 @@ export default function SchedulePanel({ settings, onClose }) {
   // Render
   // ==========================================================================
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal schedule-modal" onClick={e => e.stopPropagation()}>
+    <div className="view-screen">
 
-        {/* ── Header ── */}
-        <div className="modal-header">
-          <span className="modal-title">
+      {/* ── Header ── */}
+      <div className="view-header">
+          <button className="view-back-btn" onClick={onClose}>‹</button>
+          <span className="view-title">
             📅 {eventInfo?.name ?? settings.eventCode ?? 'Match Schedule'}
           </span>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <button
-              className="icon-btn"
-              onClick={() => loadData(true)}
-              title="Refresh"
-              aria-label="Refresh schedule"
-              disabled={loading}
-            >
-              🔄
-            </button>
-            <button className="modal-close" onClick={onClose}>✕</button>
-          </div>
-        </div>
+          <button
+            className="icon-btn"
+            onClick={() => loadData(true)}
+            title="Refresh"
+            aria-label="Refresh schedule"
+            disabled={loading}
+          >
+            🔄
+          </button>
+      </div>
 
         {/* ── Tab Bar ── */}
         <div className="schedule-tabs">
@@ -308,7 +305,7 @@ export default function SchedulePanel({ settings, onClose }) {
           </button>
         </div>
 
-        <div className="modal-body">
+        <div className="view-body">
 
           {/* ── Loading ── */}
           {loading && (
@@ -401,8 +398,7 @@ export default function SchedulePanel({ settings, onClose }) {
                           <strong>frc{settings.teamNumber}</strong> was not found at <strong>{settings.eventCode}</strong>.<br/>
                           <span style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 6, display: 'block' }}>
                             TBA returned <strong>{fetchDebug.totalEventMatches} matches</strong> for that event, but none include your team.<br/><br/>
-                            ✏️ Fix your <strong>Team Number</strong> in Settings — it must match a team that attended this event.<br/>
-                            🧪 To test: set team <strong>254</strong> + event <strong>2024casj</strong>.
+                            ✏️ Fix your <strong>Team Number</strong> in Settings — it must match a team that attended this event.
                           </span>
                         </>
                       ) : (
@@ -549,7 +545,6 @@ export default function SchedulePanel({ settings, onClose }) {
           )}
 
         </div>
-      </div>
     </div>
   )
 }

@@ -58,3 +58,17 @@ export async function fetchEventMatchPredictions(eventCode) {
   if (!res.ok) throw new Error(`Statbotics ${res.status}: ${res.statusText}`)
   return res.json()
 }
+
+// -----------------------------------------------------------------------------
+// fetchTeamStats — returns overall team stats (all-time EPA, etc.)
+//
+// Key fields: epa.total_points.mean, team, name
+//
+// @param {string|number} teamNumber
+// @returns {object}
+// -----------------------------------------------------------------------------
+export async function fetchTeamStats(teamNumber) {
+  const res = await fetch(`${STATBOTICS_BASE}/team/${teamNumber}`)
+  if (!res.ok) throw new Error(`Statbotics ${res.status}: ${res.statusText}`)
+  return res.json()
+}

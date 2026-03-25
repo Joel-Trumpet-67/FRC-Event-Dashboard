@@ -137,8 +137,7 @@ export default function SettingsPanel({ settings, onSave, onResetAll, onResetSta
               maxLength={16}
             />
             <div className="setting-hint">
-              Find yours at thebluealliance.com/events —
-              test with event <strong>2024casj</strong> (team 254).
+              Find yours at thebluealliance.com/events (lowercase, e.g. 2025casj).
             </div>
           </div>
 
@@ -156,6 +155,45 @@ export default function SettingsPanel({ settings, onSave, onResetAll, onResetSta
               Comma-separated team numbers to highlight in the schedule —
               great for tracking potential alliance partners.
             </div>
+          </div>
+
+          {/* ── Drive Team ───────────────────────────────────────── */}
+          <div className="setting-divider">👥 Drive Team</div>
+
+          <div className="setting-group">
+            <label className="setting-label">Driver</label>
+            <input
+              className="setting-input"
+              type="text"
+              placeholder="Driver name"
+              value={form.driver || ''}
+              onChange={e => handleChange('driver', e.target.value)}
+              maxLength={30}
+            />
+          </div>
+
+          <div className="setting-group">
+            <label className="setting-label">Operator</label>
+            <input
+              className="setting-input"
+              type="text"
+              placeholder="Operator name"
+              value={form.operator || ''}
+              onChange={e => handleChange('operator', e.target.value)}
+              maxLength={30}
+            />
+          </div>
+
+          <div className="setting-group">
+            <label className="setting-label">Coach</label>
+            <input
+              className="setting-input"
+              type="text"
+              placeholder="Coach name"
+              value={form.coach || ''}
+              onChange={e => handleChange('coach', e.target.value)}
+              maxLength={30}
+            />
           </div>
 
           {/* ── Thresholds ───────────────────────────────────────── */}

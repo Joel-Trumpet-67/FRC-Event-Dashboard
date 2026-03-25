@@ -1,35 +1,21 @@
-// =============================================================================
-// App.jsx
-//
-// EFFICIENCY NOTES:
-//   [PERF-7]: The 10-second tick still re-renders the full tree. A future
-//             improvement would be to move the tick into BatteryCard/BatteryModal
-//             directly so only those components refresh elapsed time displays.
-//
-//   [PERF-8]: BatteryCard is wrapped in React.memo — only cards whose battery
-//             data actually changed will re-render when the array updates.
-// -----------------------------------------------------------------------------
-// Root component. Owns all top-level state and wires every sub-component together.
-//
-// Responsibilities:
-//   - Load and persist settings (team number, thresholds, battery count, sync)
-//   - Load and persist match number
-//   - Pass settings into useBatteries hook
-//   - Delegate modal state to useModals hook
-//   - Handle Firebase sync status display
-//   - Decide whether to render normal pit view or field/view-only view
-// =============================================================================
-
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 
-// --- Components ---
-import Header        from './components/Header'
-import StatusBanner  from './components/StatusBanner'
-import BatteryGrid   from './components/BatteryGrid'
-import BatteryModal  from './components/BatteryModal'
-import SettingsPanel  from './components/SettingsPanel'
-import SchedulePanel  from './components/SchedulePanel'
-import FieldView      from './components/FieldView'
+// --- Views ---
+import HomeScreen      from './components/HomeScreen'
+import SchedulePanel   from './components/SchedulePanel'
+import RankingsView    from './components/RankingsView'
+import TeamLookup      from './components/TeamLookup'
+import AllianceTracker from './components/AllianceTracker'
+import RobotChecklist  from './components/RobotChecklist'
+import MatchNotes      from './components/MatchNotes'
+
+// --- Battery view components ---
+import Header       from './components/Header'
+import StatusBanner from './components/StatusBanner'
+import BatteryGrid  from './components/BatteryGrid'
+import BatteryModal from './components/BatteryModal'
+import SettingsPanel from './components/SettingsPanel'
+import FieldView    from './components/FieldView'
 
 // --- Hooks ---
 import { useBatteries } from './hooks/useBatteries'
@@ -45,71 +31,40 @@ import {
 } from './utils/storage'
 import { isFirebaseConfigured } from './firebase'
 
-// =============================================================================
-// SECTION 1 — DEFAULT SETTINGS
-// -----------------------------------------------------------------------------
-// Fallback values used on first launch (before anything is saved to localStorage).
-// Merged with any previously saved settings at startup.
-// =============================================================================
 const DEFAULT_SETTINGS = {
-  teamNumber:      '',    // FRC team number (display only)
-  batteryCount:    6,     // how many batteries to track
-  chargeThreshold: 60,    // minutes before a charging battery is considered "ready"
-  coolThreshold:   15,    // minutes a battery should cool before re-charging
-  syncCode:        '',    // shared Firebase room key — empty = local-only mode
-  viewOnly:        false, // if true, hides all action buttons (field phone mode)
-  tbaKey:          '',    // The Blue Alliance API key (free at thebluealliance.com/account)
-  eventCode:       '',    // TBA event code e.g. "2024casj" (find at thebluealliance.com/events)
-  watchedTeams:    '',    // Comma-separated team numbers to highlight (e.g. "1678,2910")
+  teamNumber:      '',
+  batteryCount:    6,
+  chargeThreshold: 60,
+  coolThreshold:   15,
+  syncCode:        '',
+  viewOnly:        false,
+  tbaKey:          '',
+  eventCode:       '',
+  watchedTeams:    '',
+  driver:          '',
+  operator:        '',
+  coach:           '',
 }
 
-// =============================================================================
-// SECTION 2 — URL FLAGS
-// -----------------------------------------------------------------------------
-// ?field in the URL immediately forces field/view-only mode, bypassing settings.
-// Useful for a dedicated field-side phone that never needs pit controls.
-// =============================================================================
 const URL_FIELD_MODE = new URLSearchParams(window.location.search).has('field')
 
-// =============================================================================
-// COMPONENT
-// =============================================================================
 export default function App() {
-
-  // ---------------------------------------------------------------------------
-  // STATE — Settings
-  // Merges saved settings from localStorage with defaults on first render.
-  // ---------------------------------------------------------------------------
   const [settings, setSettings] = useState(() => ({
     ...DEFAULT_SETTINGS,
     ...(loadSettings() || {}),
   }))
 
-  // ---------------------------------------------------------------------------
-  // STATE — Match Number
-  // Loaded from localStorage. User increments this before each match.
-  // ---------------------------------------------------------------------------
   const [matchNumber, setMatchNumber] = useState(loadMatchNumber)
+  const [activeView,  setActiveView]  = useState(null) // null = home screen
 
-  // ---------------------------------------------------------------------------
-  // STATE — Firebase Sync Status
-  //   'local'  = no sync code or Firebase not configured
-  //   'live'   = connected and receiving updates
-  //   'error'  = sync code set but connection failed
-  // ---------------------------------------------------------------------------
   const [syncStatus, setSyncStatus] = useState(
     isFirebaseConfigured && settings.syncCode ? 'error' : 'local'
   )
 
-  // Callback passed to useBatteries — fires whenever Firebase connection changes
   const handleSyncStatus = useCallback((connected) => {
     setSyncStatus(connected ? 'live' : 'error')
   }, [])
 
-  // ---------------------------------------------------------------------------
-  // HOOK — Battery State + Actions
-  // All battery data, sync, and status-transition actions.
-  // ---------------------------------------------------------------------------
   const {
     batteries,
     startCharging,
@@ -125,107 +80,60 @@ export default function App() {
     markBackup,
   } = useBatteries(settings.batteryCount, settings.syncCode, handleSyncStatus)
 
-  // ---------------------------------------------------------------------------
-  // HOOK — Modal State
-  // Manages battery detail modal and settings panel open/close + back button.
-  // ---------------------------------------------------------------------------
+  // goHome — used by useModals as a back-button fallback when no modals are open
+  const goHome = useCallback(() => setActiveView(null), [])
+
   const {
     selectedBattery,
     setSelectedBattery,
     showSettings,
     setShowSettings,
-    showSchedule,
-    setShowSchedule,
     closeModal,
-  } = useModals()
+  } = useModals(activeView !== null ? goHome : undefined)
 
-  // ==========================================================================
-  // SECTION 3 — SIDE EFFECTS
-  // ==========================================================================
+  // Navigate to a view, pushing history so browser back works
+  function navigate(view) {
+    window.history.pushState({ view }, '')
+    setActiveView(view)
+  }
 
-  // 10-second tick — forces re-render so elapsed times stay current
-  const [tick, setTick] = useState(0)
+  // 10-second tick — keeps elapsed time displays current
+  const [tick, setTick] = useState(0) // eslint-disable-line no-unused-vars
   useEffect(() => {
     const id = setInterval(() => setTick(t => t + 1), 10_000)
     return () => clearInterval(id)
   }, [])
 
-  // Persist settings to localStorage whenever they change
   useEffect(() => { saveSettings(settings) }, [settings])
-
-  // Persist match number to localStorage whenever it changes
   useEffect(() => { saveMatchNumber(matchNumber) }, [matchNumber])
 
-  // ---------------------------------------------------------------------------
-  // EFFECT — Auto-reset cycles when Match Day advances
-  // Every time the user increments Match Day (taps ›), cycle counts and
-  // readings are wiped so stats start clean for the new day.
-  // Decrementing (taps ‹) does NOT reset — prevents accidental data loss.
-  // useRef tracks the previous value without causing an extra render.
-  // ---------------------------------------------------------------------------
+  // Auto-reset cycles when match day advances
   const prevMatchNumber = useRef(matchNumber)
   useEffect(() => {
-    if (matchNumber > prevMatchNumber.current) {
-      resetStats()
-    }
+    if (matchNumber > prevMatchNumber.current) resetStats()
     prevMatchNumber.current = matchNumber
   }, [matchNumber]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Reset sync status to 'local' when syncCode is cleared
   useEffect(() => {
     if (!isFirebaseConfigured || !settings.syncCode) setSyncStatus('local')
   }, [settings.syncCode])
 
-  // ==========================================================================
-  // SECTION 4 — DERIVED STATE
-  // Computed fresh each render from the current battery array + settings.
-  // ==========================================================================
-
-  // The battery the pit crew should grab next (memoized — PERF-3)
   const bestNext = useMemo(
     () => getBestNextBattery(batteries, settings.chargeThreshold),
     [batteries, settings.chargeThreshold]
   )
-
-  // The battery currently installed in the robot, or null (memoized — PERF-3)
-  const inBotBattery = useMemo(
-    () => getInBotBattery(batteries),
-    [batteries]
-  )
-
-  // The battery whose detail modal is open — kept in sync with the live array
+  const inBotBattery = useMemo(() => getInBotBattery(batteries), [batteries])
   const modalBattery = selectedBattery
     ? batteries.find(b => b.id === selectedBattery.id) || null
     : null
 
-  // ==========================================================================
-  // SECTION 5 — EVENT HANDLERS
-  // Thin wrappers combining hook actions with UI side-effects.
-  // ==========================================================================
-
-  // Save updated settings from SettingsPanel
   function handleSaveSettings(newSettings) { setSettings(newSettings) }
+  function handleResetAll(count)           { resetAll(count); closeModal() }
+  function handleResetStats()              { resetStats() }
+  function handlePutInBot(id)              { putInBot(id); closeModal() }
 
-  // Reset all battery data (called from SettingsPanel danger zone)
-  function handleResetAll(count) { resetAll(count); closeModal() }
-
-  // Reset only cycle counts + readings — keeps labels, notes, status, history
-  function handleResetStats() { resetStats() }
-
-  // Put battery in bot AND close the detail modal
-  function handlePutInBot(id) { putInBot(id); closeModal() }
-
-  // Mark a battery as backup (does not close the modal)
-  function handleMarkBackup(id) { markBackup(id) }
-
-  // ==========================================================================
-  // SECTION 6 — RENDER
-  // Field mode = simplified read-only view (no action buttons).
-  // Normal mode = full pit management UI.
-  // ==========================================================================
-
+  // ── Field view ────────────────────────────────────────────────
   const isFieldMode = URL_FIELD_MODE || settings.viewOnly
-
   if (isFieldMode) {
     return (
       <FieldView
@@ -243,22 +151,75 @@ export default function App() {
     )
   }
 
+  // ── Settings modal (shared across views) ──────────────────────
+  const settingsModal = showSettings && (
+    <SettingsPanel
+      settings={settings}
+      onSave={handleSaveSettings}
+      onResetAll={handleResetAll}
+      onResetStats={handleResetStats}
+      onClose={() => setShowSettings(false)}
+    />
+  )
+
+  // ── Home screen ───────────────────────────────────────────────
+  if (activeView === null) {
+    return (
+      <>
+        <HomeScreen
+          teamNumber={settings.teamNumber}
+          syncStatus={syncStatus}
+          onNavigate={navigate}
+          onOpenSettings={() => setShowSettings(true)}
+        />
+        {settingsModal}
+      </>
+    )
+  }
+
+  // ── Schedule ──────────────────────────────────────────────────
+  if (activeView === 'schedule') {
+    return <SchedulePanel settings={settings} onClose={goHome} />
+  }
+
+  // ── Rankings ──────────────────────────────────────────────────
+  if (activeView === 'rankings') {
+    return <RankingsView settings={settings} onBack={goHome} />
+  }
+
+  // ── Team Lookup ───────────────────────────────────────────────
+  if (activeView === 'teamlookup') {
+    return <TeamLookup settings={settings} onBack={goHome} />
+  }
+
+  // ── Alliance Tracker ──────────────────────────────────────────
+  if (activeView === 'alliance') {
+    return <AllianceTracker settings={settings} onBack={goHome} />
+  }
+
+  // ── Robot Checklist ───────────────────────────────────────────
+  if (activeView === 'checklist') {
+    return <RobotChecklist onBack={goHome} />
+  }
+
+  // ── Match Notes ───────────────────────────────────────────────
+  if (activeView === 'notes') {
+    return <MatchNotes matchNumber={matchNumber} onBack={goHome} />
+  }
+
+  // ── Battery view ──────────────────────────────────────────────
   return (
     <div className="app">
-
-      {/* Top bar: team number, match counter, sync indicator, settings button */}
       <Header
         teamNumber={settings.teamNumber}
         matchNumber={matchNumber}
         onMatchChange={setMatchNumber}
         onSettingsOpen={() => setShowSettings(true)}
-        onScheduleOpen={() => setShowSchedule(true)}
+        onBack={goHome}
         syncStatus={syncStatus}
       />
 
       <main className="main-content">
-
-        {/* Banner: current in-bot battery + best next recommendation */}
         <StatusBanner
           batteries={batteries}
           inBotBattery={inBotBattery}
@@ -267,7 +228,6 @@ export default function App() {
           onBatteryClick={setSelectedBattery}
         />
 
-        {/* Grid: one card per battery — tap to open detail modal */}
         <BatteryGrid
           batteries={batteries}
           bestNext={bestNext}
@@ -276,7 +236,6 @@ export default function App() {
           onCardPress={setSelectedBattery}
         />
 
-        {/* Colour legend */}
         <div className="legend">
           <span className="legend-item" style={{ color: '#ef4444' }}>● Depleted</span>
           <span className="legend-item" style={{ color: '#f59e0b' }}>● Charging</span>
@@ -287,7 +246,6 @@ export default function App() {
         </div>
       </main>
 
-      {/* Battery detail modal — only rendered when a card is tapped */}
       {modalBattery && (
         <BatteryModal
           battery={modalBattery}
@@ -303,29 +261,11 @@ export default function App() {
           onMarkDepleted={() => { markDepleted(modalBattery.id); closeModal() }}
           onUpdateReadings={(data) => updateReadings(modalBattery.id, data)}
           onUpdateMeta={(data) => updateMeta(modalBattery.id, data)}
-          onMarkBackup={() => handleMarkBackup(modalBattery.id)}
+          onMarkBackup={() => markBackup(modalBattery.id)}
         />
       )}
 
-      {/* Settings panel — slides up when gear icon is tapped */}
-      {showSettings && (
-        <SettingsPanel
-          settings={settings}
-          onSave={handleSaveSettings}
-          onResetAll={handleResetAll}
-          onResetStats={handleResetStats}
-          onClose={() => setShowSettings(false)}
-        />
-      )}
-
-      {/* Schedule panel — TBA match schedule + Statbotics stats */}
-      {showSchedule && (
-        <SchedulePanel
-          settings={settings}
-          onClose={() => setShowSchedule(false)}
-        />
-      )}
-
+      {settingsModal}
     </div>
   )
 }

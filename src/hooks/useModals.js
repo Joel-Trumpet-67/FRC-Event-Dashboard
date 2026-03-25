@@ -6,60 +6,31 @@
 // Also handles browser back-button behaviour:
 //   - When a modal opens, a history entry is pushed so the back button works
 //   - When the back button is pressed, the topmost modal is closed
+//   - If no modals are open, onGoHome() is called (used for view navigation)
 // =============================================================================
 
 import { useState, useEffect } from 'react'
 
-// -----------------------------------------------------------------------------
-// useModals
-//
-// @returns {object}
-//   selectedBattery    — battery object whose detail modal is open (or null)
-//   setSelectedBattery — open the detail modal for a battery
-//   showSettings       — boolean: whether the settings panel is open
-//   setShowSettings    — open or close the settings panel
-//   closeModal         — closes the battery detail modal
-// -----------------------------------------------------------------------------
-export function useModals() {
-
-  // ---------------------------------------------------------------------------
-  // STATE — which modal is open
-  // selectedBattery holds the full battery object (not just an id) so the modal
-  // can render immediately, then stay in sync via batteries.find() in App.jsx.
-  // ---------------------------------------------------------------------------
+export function useModals(onGoHome) {
   const [selectedBattery, setSelectedBattery] = useState(null)
   const [showSettings,    setShowSettings]    = useState(false)
-  const [showSchedule,    setShowSchedule]    = useState(false)
 
-  // ---------------------------------------------------------------------------
-  // EFFECT — Push browser history entry when a modal opens
-  // This gives the back button something to pop, so pressing back closes
-  // the modal instead of navigating away from the app entirely.
-  // ---------------------------------------------------------------------------
   useEffect(() => {
-    if (selectedBattery || showSettings || showSchedule) {
+    if (selectedBattery || showSettings) {
       window.history.pushState({ modal: true }, '')
     }
-  }, [selectedBattery, showSettings, showSchedule])
+  }, [selectedBattery, showSettings])
 
-  // ---------------------------------------------------------------------------
-  // EFFECT — Handle browser back button
-  // Listens for the popstate event (fired when back is pressed).
-  // Closes the topmost open modal in priority order: battery detail > settings.
-  // ---------------------------------------------------------------------------
   useEffect(() => {
     function handlePopState() {
       if (selectedBattery) { setSelectedBattery(null); return }
       if (showSettings)    { setShowSettings(false);   return }
-      if (showSchedule)    { setShowSchedule(false);   return }
+      onGoHome?.()
     }
     window.addEventListener('popstate', handlePopState)
     return () => window.removeEventListener('popstate', handlePopState)
-  }, [selectedBattery, showSettings, showSchedule])
+  }, [selectedBattery, showSettings, onGoHome])
 
-  // ---------------------------------------------------------------------------
-  // closeModal — convenience function to close the battery detail modal
-  // ---------------------------------------------------------------------------
   function closeModal() {
     setSelectedBattery(null)
   }
@@ -69,8 +40,6 @@ export function useModals() {
     setSelectedBattery,
     showSettings,
     setShowSettings,
-    showSchedule,
-    setShowSchedule,
     closeModal,
   }
 }
