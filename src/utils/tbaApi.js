@@ -102,3 +102,35 @@ export async function fetchTeamSimple(teamNumber, apiKey) {
 export async function fetchEventTeams(eventCode, apiKey) {
   return tbaFetch(`/event/${eventCode}/teams/simple`, apiKey)
 }
+
+// -----------------------------------------------------------------------------
+// fetchEventOPRs — returns OPR, DPR, and CCWM for all teams at an event.
+//
+// Response shape:
+//   { oprs: { "frc254": 45.2, ... }, dprs: { ... }, ccwms: { ... } }
+//
+// OPR  = Offensive Power Rating (contribution to alliance score)
+// DPR  = Defensive Power Rating (contribution to opponent score — lower is better)
+// CCWM = Calculated Contribution to Winning Margin (OPR - DPR)
+//
+// @param {string} eventCode
+// @param {string} apiKey
+// @returns {object}
+// -----------------------------------------------------------------------------
+export async function fetchEventOPRs(eventCode, apiKey) {
+  return tbaFetch(`/event/${eventCode}/oprs`, apiKey)
+}
+
+// -----------------------------------------------------------------------------
+// fetchEventAlliances — returns playoff alliances and their bracket status.
+//
+// Response: Array of alliance objects:
+//   { name, picks: ["frc254", ...], status: { level, record, status } }
+//
+// @param {string} eventCode
+// @param {string} apiKey
+// @returns {Array}
+// -----------------------------------------------------------------------------
+export async function fetchEventAlliances(eventCode, apiKey) {
+  return tbaFetch(`/event/${eventCode}/alliances`, apiKey)
+}

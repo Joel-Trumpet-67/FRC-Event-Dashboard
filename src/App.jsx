@@ -9,6 +9,9 @@ import AllianceTracker from './components/AllianceTracker'
 import RobotChecklist  from './components/RobotChecklist'
 import MatchNotes      from './components/MatchNotes'
 import ScoutingView    from './components/ScoutingView'
+import OPRView         from './components/OPRView'
+import HeadToHead      from './components/HeadToHead'
+import PlayoffBracket  from './components/PlayoffBracket'
 
 // --- Battery view components ---
 import Header       from './components/Header'
@@ -211,6 +214,21 @@ export default function App() {
   // ── Scouting ──────────────────────────────────────────────────
   if (activeView === 'scouting') {
     return <ScoutingView onBack={goHome} />
+  }
+
+  // ── OPR / DPR ─────────────────────────────────────────────────
+  if (activeView === 'opr') {
+    return <OPRView settings={settings} onBack={goHome} />
+  }
+
+  // ── Head to Head ──────────────────────────────────────────────
+  if (activeView === 'headtohead') {
+    return <HeadToHead settings={settings} onBack={goHome} />
+  }
+
+  // ── Playoff Bracket ───────────────────────────────────────────
+  if (activeView === 'bracket') {
+    return <PlayoffBracket settings={settings} onBack={goHome} />
   }
 
   // ── Battery view ──────────────────────────────────────────────
