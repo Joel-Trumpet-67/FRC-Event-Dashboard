@@ -31,17 +31,27 @@ export default function HomeScreen({ teamNumber, syncStatus, onNavigate, onOpenS
       </div>
 
       <div className="home-grid">
-        {TILES.map(tile => (
-          <button
-            key={tile.id}
-            className={`home-tile${tile.id === 'scouting' ? ' coming-soon' : ''}`}
-            onClick={() => onNavigate(tile.id)}
-          >
-            <span className="home-tile-icon">{tile.icon}</span>
-            <span className="home-tile-label">{tile.label}</span>
-            <span className="home-tile-sub">{tile.sub}</span>
-          </button>
-        ))}
+        {TILES.map(tile => {
+          const isFeatured = tile.id === 'batteries'
+          const isComingSoon = tile.id === 'scouting'
+          const cls = `home-tile${isFeatured ? ' featured' : ''}${isComingSoon ? ' coming-soon' : ''}`
+          return (
+            <button key={tile.id} className={cls} onClick={() => onNavigate(tile.id)}>
+              <span className="home-tile-icon">{tile.icon}</span>
+              {isFeatured ? (
+                <span className="tile-text">
+                  <span className="home-tile-label">{tile.label}</span>
+                  <span className="home-tile-sub">{tile.sub}</span>
+                </span>
+              ) : (
+                <>
+                  <span className="home-tile-label">{tile.label}</span>
+                  <span className="home-tile-sub">{tile.sub}</span>
+                </>
+              )}
+            </button>
+          )
+        })}
       </div>
     </div>
   )

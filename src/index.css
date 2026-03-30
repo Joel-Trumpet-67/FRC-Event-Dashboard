@@ -7,22 +7,24 @@
 }
 
 :root {
-  --bg:          #0f172a;
-  --surface:     #1e293b;
-  --surface2:    #273449;
-  --border:      #334155;
+  --bg:          #0a1628;
+  --surface:     #1a2744;
+  --surface2:    #243355;
+  --border:      #2e4070;
   --text:        #f1f5f9;
   --text-muted:  #94a3b8;
   --accent:      #38bdf8;
+  --accent-glow: rgba(56, 189, 248, 0.25);
 
   --red:         #ef4444;
   --amber:       #f59e0b;
   --orange:      #f97316;
   --green:       #22c55e;
   --blue:        #3b82f6;
+  --purple:      #8b5cf6;
 
-  --radius:      12px;
-  --radius-sm:   8px;
+  --radius:      14px;
+  --radius-sm:   9px;
 }
 
 html, body {
@@ -89,11 +91,23 @@ input:focus, textarea:focus {
   align-items: center;
   justify-content: space-between;
   padding: 12px 14px;
-  background: var(--surface);
+  background: linear-gradient(135deg, var(--surface) 0%, #0f1f3a 100%);
   border-bottom: 1px solid var(--border);
   position: sticky;
   top: 0;
   z-index: 10;
+  box-shadow: 0 1px 0 var(--border), 0 2px 20px rgba(0,0,0,0.4);
+}
+
+.header::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent 0%, var(--accent) 40%, rgba(56,189,248,0.4) 70%, transparent 100%);
+  pointer-events: none;
 }
 
 .header-left {
@@ -168,6 +182,7 @@ input:focus, textarea:focus {
   font-weight: 800;
   color: var(--accent);
   line-height: 1.1;
+  text-shadow: 0 0 12px rgba(56,189,248,0.5);
 }
 
 .icon-btn {
@@ -233,7 +248,7 @@ input:focus, textarea:focus {
 }
 
 .banner-card {
-  background: var(--surface);
+  background: linear-gradient(145deg, var(--surface) 0%, #0d1b30 100%);
   border: 2px solid var(--border);
   border-radius: var(--radius);
   padding: 12px 14px;
@@ -341,8 +356,9 @@ input:focus, textarea:focus {
   gap: 4px;
   text-align: left;
   min-height: 120px;
-  transition: transform 0.1s, box-shadow 0.1s;
+  transition: transform 0.1s, box-shadow 0.15s;
   cursor: pointer;
+  background: linear-gradient(160deg, var(--surface) 0%, #0a1628 100%);
 }
 
 .battery-card:active {
@@ -350,21 +366,23 @@ input:focus, textarea:focus {
 }
 
 .battery-card.best-next {
-  box-shadow: 0 0 0 3px #22c55e, 0 0 12px #22c55e44;
+  box-shadow: 0 0 0 2px #22c55e, 0 0 20px #22c55e55, 0 4px 16px rgba(0,0,0,0.4);
+  background: linear-gradient(160deg, rgba(34,197,94,0.07) 0%, #0a1628 100%);
 }
 
 .best-badge {
   position: absolute;
   top: -10px;
   right: 8px;
-  background: var(--green);
-  color: #000;
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+  color: #fff;
   font-size: 10px;
   font-weight: 900;
-  letter-spacing: 0.5px;
-  padding: 2px 8px;
+  letter-spacing: 0.8px;
+  padding: 3px 9px;
   border-radius: 99px;
   text-transform: uppercase;
+  box-shadow: 0 0 10px #22c55e66;
 }
 
 
@@ -1717,10 +1735,23 @@ input:focus, textarea:focus {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 16px;
-  background: var(--surface);
+  padding: 18px 16px 16px;
+  background: linear-gradient(160deg, #1a3058 0%, #0a1628 100%);
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
+  position: relative;
+  box-shadow: 0 2px 24px rgba(0,0,0,0.5);
+}
+
+.home-header::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent 0%, var(--accent) 35%, rgba(56,189,248,0.3) 65%, transparent 100%);
+  pointer-events: none;
 }
 
 .home-title-group {
@@ -1729,9 +1760,13 @@ input:focus, textarea:focus {
 }
 
 .home-title {
-  font-size: 20px;
+  font-size: 22px;
   font-weight: 800;
-  letter-spacing: 0.2px;
+  letter-spacing: 0.3px;
+  background: linear-gradient(135deg, #f1f5f9 30%, var(--accent) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .home-subtitle {
@@ -1750,6 +1785,11 @@ input:focus, textarea:focus {
   align-content: start;
 }
 
+@keyframes tile-enter {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
 .home-tile {
   display: flex;
   flex-direction: column;
@@ -1757,22 +1797,39 @@ input:focus, textarea:focus {
   justify-content: center;
   gap: 6px;
   padding: 22px 12px;
-  background: var(--surface);
+  background: linear-gradient(145deg, var(--surface) 0%, #0e1f38 100%);
   border: 1.5px solid var(--border);
   border-radius: var(--radius);
   text-align: center;
-  transition: background 0.1s, transform 0.1s;
+  transition: border-color 0.15s, background 0.15s, transform 0.1s, box-shadow 0.15s;
   min-height: 110px;
+  opacity: 0;
+  animation: tile-enter 0.35s ease forwards;
 }
+
+.home-tile:nth-child(1)  { animation-delay: 0.04s; }
+.home-tile:nth-child(2)  { animation-delay: 0.08s; }
+.home-tile:nth-child(3)  { animation-delay: 0.12s; }
+.home-tile:nth-child(4)  { animation-delay: 0.16s; }
+.home-tile:nth-child(5)  { animation-delay: 0.20s; }
+.home-tile:nth-child(6)  { animation-delay: 0.24s; }
+.home-tile:nth-child(7)  { animation-delay: 0.28s; }
+.home-tile:nth-child(8)  { animation-delay: 0.32s; }
+.home-tile:nth-child(9)  { animation-delay: 0.36s; }
+.home-tile:nth-child(10) { animation-delay: 0.40s; }
+.home-tile:nth-child(11) { animation-delay: 0.44s; }
 
 .home-tile:active {
   background: var(--surface2);
-  transform: scale(0.96);
+  transform: scale(0.95);
+  border-color: rgba(56, 189, 248, 0.35);
+  box-shadow: 0 0 16px rgba(56, 189, 248, 0.1);
 }
 
 .home-tile-icon {
   font-size: 30px;
   line-height: 1;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4));
 }
 
 .home-tile-label {
@@ -1785,6 +1842,46 @@ input:focus, textarea:focus {
   font-size: 11px;
   color: var(--text-muted);
   line-height: 1.3;
+}
+
+/* Featured batteries tile */
+.home-tile.featured {
+  grid-column: span 2;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 16px;
+  padding: 20px 24px;
+  min-height: 80px;
+  background: linear-gradient(135deg, rgba(56,189,248,0.1) 0%, #0e1f38 60%);
+  border-color: rgba(56, 189, 248, 0.5);
+  box-shadow: 0 0 0 1px rgba(56,189,248,0.08), inset 0 1px 0 rgba(255,255,255,0.04);
+  text-align: left;
+}
+
+.home-tile.featured .home-tile-icon {
+  font-size: 38px;
+  flex-shrink: 0;
+}
+
+.home-tile.featured .home-tile-label {
+  font-size: 18px;
+}
+
+.home-tile.featured .home-tile-sub {
+  font-size: 12px;
+  color: rgba(56,189,248,0.7);
+}
+
+.home-tile.featured .tile-text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.home-tile.featured:active {
+  background: linear-gradient(135deg, rgba(56,189,248,0.15) 0%, #152840 60%);
+  box-shadow: 0 0 20px rgba(56,189,248,0.15);
 }
 
 /* ─── Rankings View ──────────────────────────────────────────── */
